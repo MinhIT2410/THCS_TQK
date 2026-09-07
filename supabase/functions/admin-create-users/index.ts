@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 
 const allowedOrigins = [
-  "https://thcs-ton-that-tung.vercel.app",
+  "https://thcs-tqk.vercel.app",
   "http://localhost:5173",
 ];
 

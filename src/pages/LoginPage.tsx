@@ -105,10 +105,10 @@ export default function LoginPage() {
       if (
         hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
-        (hostname.includes('.vercel.app') && hostname !== 'thcs-ton-that-tung.vercel.app') ||
+        (hostname.includes('.vercel.app') && hostname !== 'thcs-tqk.vercel.app') ||
         hostname.includes('run.app')
       ) {
-        redirectUrl = 'https://thcs-ton-that-tung.vercel.app/reset-password';
+        redirectUrl = 'https://thcs-tqk.vercel.app/reset-password';
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
