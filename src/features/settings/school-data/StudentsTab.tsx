@@ -21,23 +21,27 @@ import {
   GraduationCap,
   CheckCircle2,
   Info,
+  Trash2,
 } from 'lucide-react';
 import {
   studentEnrollmentService,
   StudentEnrollmentItem,
 } from '../../../services/studentEnrollmentService';
 import { CreateUserModal } from '../../users/components/CreateUserModal';
-import StudentEnrollmentSyncModal from './StudentEnrollmentSyncModal';
 import { sortClassesNaturally } from '../../../utils/classSortUtils';
+import { useAuth } from '../../auth/useAuth';
+import StudentRosterResetModal from './StudentRosterResetModal';
 
 export default function StudentsTab() {
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole('SUPER_ADMIN');
   const [students, setStudents] = useState<StudentEnrollmentItem[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
 
   // Modal states for creating students
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState<boolean>(false);
-  const [isEnrollmentSyncModalOpen, setIsEnrollmentSyncModalOpen] = useState<boolean>(false);
+  const [isRosterResetModalOpen, setIsRosterResetModalOpen] = useState<boolean>(false);
 
   // Filter states
   const [selectedYearId, setSelectedYearId] = useState<string>('');
@@ -386,22 +390,24 @@ export default function StudentsTab() {
 
           <button
             type="button"
-            onClick={() => setIsEnrollmentSyncModalOpen(true)}
-            disabled={!selectedYearId}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs shadow-sm transition-all disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Đồng bộ phân lớp Excel</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setIsAddStudentModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
           >
             <UserPlus className="w-4 h-4" />
             <span>+ Thêm học sinh</span>
           </button>
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setIsRosterResetModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition-all"
+              title="Xóa toàn bộ tài khoản STUDENT cũ và nhập lại từ danh sách Excel chính thức"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Reset & nhập lại HS</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -941,18 +947,6 @@ export default function StudentsTab() {
         </div>
       )}
 
-      <StudentEnrollmentSyncModal
-        isOpen={isEnrollmentSyncModalOpen}
-        onClose={() => setIsEnrollmentSyncModalOpen(false)}
-        academicYearId={selectedYearId}
-        academicYearName={selectedYearName}
-        onSuccess={count => {
-          setSuccess(`Đã đồng bộ phân lớp cho ${count} học sinh.`);
-          setSelectedStudentIds([]);
-          fetchStudents();
-        }}
-      />
-
       {/* Create Student Modal */}
       <CreateUserModal
         isOpen={isAddStudentModalOpen}
@@ -965,6 +959,20 @@ export default function StudentsTab() {
         defaultRole="STUDENT"
         initialAcademicYearId={selectedYearId}
         initialClassId={selectedClassId}
+      />
+
+
+      <StudentRosterResetModal
+        isOpen={isRosterResetModalOpen}
+        onClose={() => setIsRosterResetModalOpen(false)}
+        onSuccess={() => {
+          setSuccess('Đã reset và nhập lại danh sách học sinh.');
+          setSelectedStudentIds([]);
+          fetchStudents();
+        }}
+        academicYearId={selectedYearId}
+        academicYearName={selectedYearName}
+        classes={classes}
       />
     </div>
   );
