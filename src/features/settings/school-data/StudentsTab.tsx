@@ -27,6 +27,7 @@ import {
   StudentEnrollmentItem,
 } from '../../../services/studentEnrollmentService';
 import { CreateUserModal } from '../../users/components/CreateUserModal';
+import StudentEnrollmentSyncModal from './StudentEnrollmentSyncModal';
 import { sortClassesNaturally } from '../../../utils/classSortUtils';
 
 export default function StudentsTab() {
@@ -36,6 +37,7 @@ export default function StudentsTab() {
 
   // Modal states for creating students
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState<boolean>(false);
+  const [isEnrollmentSyncModalOpen, setIsEnrollmentSyncModalOpen] = useState<boolean>(false);
 
   // Filter states
   const [selectedYearId, setSelectedYearId] = useState<string>('');
@@ -381,6 +383,16 @@ export default function StudentsTab() {
               <span>Phân vào lớp ({selectedStudentIds.length})</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsEnrollmentSyncModalOpen(true)}
+            disabled={!selectedYearId}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Đồng bộ phân lớp Excel</span>
+          </button>
 
           <button
             type="button"
@@ -928,6 +940,18 @@ export default function StudentsTab() {
           </div>
         </div>
       )}
+
+      <StudentEnrollmentSyncModal
+        isOpen={isEnrollmentSyncModalOpen}
+        onClose={() => setIsEnrollmentSyncModalOpen(false)}
+        academicYearId={selectedYearId}
+        academicYearName={selectedYearName}
+        onSuccess={count => {
+          setSuccess(`Đã đồng bộ phân lớp cho ${count} học sinh.`);
+          setSelectedStudentIds([]);
+          fetchStudents();
+        }}
+      />
 
       {/* Create Student Modal */}
       <CreateUserModal
