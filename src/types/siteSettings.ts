@@ -7,6 +7,7 @@ export interface SiteSettings {
   favicon_url: string | null;
   address: string | null;
   phone: string | null;
+  phone_2?: string | null;
   email: string | null;
   facebook_url: string | null;
   youtube_url: string | null;
@@ -14,6 +15,12 @@ export interface SiteSettings {
   map_url: string | null;
   footer_title: string | null;
   footer_description: string | null;
+  footer_unit_name?: string | null;
+  footer_slogan?: string | null;
+  footer_nav_title?: string | null;
+  footer_feedback_title?: string | null;
+  footer_feedback_desc?: string | null;
+  footer_text?: string | null;
   contact_intro: string | null;
   home_hero_slogan: string | null;
   home_hero_title: string | null;

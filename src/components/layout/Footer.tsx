@@ -67,27 +67,30 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
               )}
               <div>
                 <span className="block font-display text-sm font-bold tracking-tight text-white uppercase leading-normal">
-                  {siteSettings.footer_title || "LIÊN ĐỘI TRƯỜNG THCS TRẦN QUANG KHẢI"}
+                  {siteSettings.footer_unit_name || siteSettings.footer_title || "LIÊN ĐỘI TRƯỜNG THCS TRẦN QUANG KHẢI"}
                 </span>
               </div>
             </div>
             
             <p className="text-xs text-slate-400 italic font-medium leading-relaxed">
-              "{siteSettings.footer_description || siteSettings.slogan || "Học tập tốt, Lao động tốt"}"
+              "{siteSettings.footer_slogan || siteSettings.footer_description || siteSettings.slogan || "Thiếu nhi Trần Quang Khải - Chăm ngoan, học tốt, tiếp bước cha anh."}"
             </p>
 
             <div className="space-y-2.5 pt-2 text-xs">
               <div className="flex items-start space-x-2.5">
                 <MapPin className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                <span>{siteSettings.address || "Chưa có địa chỉ"}</span>
+                <span>{siteSettings.address || "Số 01 Đường Trần Quang Khải, Phường Tân Định, Quận 1, TP. Hồ Chí Minh"}</span>
               </div>
               <div className="flex items-center space-x-2.5">
                 <Phone className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>{siteSettings.phone || "Chưa có số điện thoại"}</span>
+                <span>
+                  {siteSettings.phone || "028 3820 1234"}
+                  {siteSettings.phone_2 ? ` - ${siteSettings.phone_2}` : ''}
+                </span>
               </div>
               <div className="flex items-center space-x-2.5">
                 <Mail className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>{siteSettings.email || "Chưa có email"}</span>
+                <span>{siteSettings.email || "liendoi.thcstranquangkhai@edu.vn"}</span>
               </div>
             </div>
 
@@ -141,7 +144,7 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
           {/* Column 2: Quick Navigation */}
           <div className="lg:col-span-3 space-y-4">
             <h3 className="font-display text-sm font-bold tracking-wider text-slate-200 uppercase">
-              Danh mục chính
+              {siteSettings.footer_nav_title || "Danh mục chính"}
             </h3>
             <ul className="space-y-2 text-xs">
               {NAV_MENU.filter(item => item.id !== 'home').map((link) => (
@@ -165,10 +168,10 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
           {/* Column 3: Suggestion / Feedback Form */}
           <div className="lg:col-span-5 space-y-4">
             <h3 className="font-display text-sm font-bold tracking-wider text-slate-200 uppercase">
-              Hộp thư điều em muốn nói
+              {siteSettings.footer_feedback_title || 'Hộp thư "Điều em muốn nói"'}
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              {siteSettings.contact_intro || "Mọi ý kiến đóng góp, hiến kế hoạt động Đội hoặc chia sẻ tâm tư, em hãy gửi trực tiếp về Ban chỉ huy Liên đội:"}
+              {siteSettings.footer_feedback_desc || siteSettings.contact_intro || "Nơi học sinh gửi gắm tâm tư, nguyện vọng, góp ý hoặc nhờ sự hỗ trợ từ Thầy Cô Tổng phụ trách và Ban Giám Hiệu."}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -219,7 +222,7 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
 
         {/* Bottom copyright info */}
         <div className="mt-12 border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 font-medium">
-          <p>© {SITE_CONFIG.currentYear} {siteSettings.school_name || "Trường THCS Trần Quang Khải"}. Tất cả quyền được bảo lưu.</p>
+          <p>{siteSettings.footer_text || `© ${SITE_CONFIG.currentYear || 2026} ${siteSettings.school_name || "Trường THCS Trần Quang Khải"}. Tất cả quyền được bảo lưu.`}</p>
           <div className="flex items-center space-x-4 mt-3 md:mt-0">
             <span className="hover:text-slate-300 transition-colors">Điều khoản</span>
             <span>•</span>

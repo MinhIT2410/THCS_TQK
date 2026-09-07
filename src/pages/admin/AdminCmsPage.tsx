@@ -23,10 +23,12 @@ import {
   HelpCircle,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  PanelBottom
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSiteSettings } from '../../contexts/SiteSettingsContext';
+import { FooterBlockEditor } from '../../features/cms/components/FooterBlockEditor';
 
 interface FaqItem {
   id: string;
@@ -37,7 +39,7 @@ interface FaqItem {
 export default function AdminCmsPage() {
   const navigate = useNavigate();
   const { siteSettings, updateSettings, loading: settingsLoading } = useSiteSettings();
-  const [activeTab, setActiveTab] = useState<'contact' | 'homepage'>('contact');
+  const [activeTab, setActiveTab] = useState<'contact' | 'homepage' | 'footer'>('contact');
   
   // Local form states
   const [contactIntro, setContactIntro] = useState('');
@@ -160,6 +162,17 @@ export default function AdminCmsPage() {
           >
             <Home className="h-4 w-4" />
             <span>Giao diện trang chủ (Visual Edit)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('footer')}
+            className={`px-5 py-3 text-xs font-bold border-b-2 transition-all flex items-center space-x-2 ${
+              activeTab === 'footer'
+                ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-extrabold bg-indigo-50/10'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50'
+            }`}
+          >
+            <PanelBottom className="h-4 w-4" />
+            <span>Chân trang (Footer)</span>
           </button>
         </div>
       </div>
@@ -489,6 +502,10 @@ export default function AdminCmsPage() {
               </div>
             </div>
           </div>
+        </div>
+      ) : activeTab === 'footer' ? (
+        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+          <FooterBlockEditor />
         </div>
       ) : (
         /* Home page tab content */
