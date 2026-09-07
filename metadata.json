@@ -1,5 +1,5 @@
 {
-  "name": "Website Liên đội THCS",
+  "name": "Website Liên đội THCS Trần Quang Khải",
   "description": "Website chính thức của Liên đội Trường THCS Trần Quang Khải - Cổng thông tin hoạt động Đội, phong trào thiếu nhi và tin tức giáo dục.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
