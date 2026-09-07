@@ -171,31 +171,77 @@ export const studentRosterResetService = {
   },
 
   async resetAllStudentAccounts(onProgress?: (progress: ResetProgress) => void) {
-    const { data: prepareData, error: prepareError } = await supabase.functions.invoke('admin-reset-students', {
-      body: { action: 'prepare' },
-    });
-    if (prepareError) throw prepareError;
-    if (!prepareData?.success) throw new Error(prepareData?.message || 'Không thể chuẩn bị reset học sinh.');
-
-    const userIds: string[] = prepareData.user_ids || [];
     const failed: Array<{ user_id: string; message: string }> = [];
-    let completed = 0;
 
-    for (let i = 0; i < userIds.length; i += 50) {
-      const batch = userIds.slice(i, i + 50);
+    const countRemaining = async (): Promise<number> => {
       const { data, error } = await supabase.functions.invoke('admin-reset-students', {
-        body: { action: 'delete_batch', user_ids: batch },
+        body: { action: 'count_remaining' },
       });
       if (error) throw error;
-      if (Array.isArray(data?.failed)) failed.push(...data.failed);
-      if (Array.isArray(data?.protected_ids) && data.protected_ids.length > 0) {
-        failed.push(...data.protected_ids.map((id: string) => ({ user_id: id, message: 'Tài khoản có thêm vai trò khác nên được bảo vệ.' })));
-      }
-      completed += batch.length;
-      onProgress?.({ phase: 'reset', completed, total: userIds.length });
+      if (!data?.success) throw new Error(data?.message || 'Không thể đếm tài khoản học sinh còn lại.');
+      return Number(data.remaining || 0);
+    };
+
+    const initialTotal = await countRemaining();
+    let completed = 0;
+
+    if (initialTotal === 0) {
+      onProgress?.({ phase: 'reset', completed: 0, total: 0 });
+      return { total: 0, failed };
     }
 
-    return { total: userIds.length, failed };
+    // Prepare and delete repeatedly. Each prepared batch is capped at 500 rows,
+    // avoiding the PostgREST 1000-row response limit that previously left students behind.
+    while (true) {
+      const remainingBefore = await countRemaining();
+      if (remainingBefore <= 0) break;
+
+      const { data: prepareData, error: prepareError } = await supabase.functions.invoke('admin-reset-students', {
+        body: { action: 'prepare_batch', limit: 500 },
+      });
+      if (prepareError) throw prepareError;
+      if (!prepareData?.success) throw new Error(prepareData?.message || 'Không thể chuẩn bị batch reset học sinh.');
+
+      const userIds: string[] = Array.isArray(prepareData.user_ids) ? prepareData.user_ids : [];
+      if (userIds.length === 0) {
+        throw new Error(`Hệ thống vẫn còn ${remainingBefore} học sinh nhưng không lấy được batch để xóa. Đã dừng để bảo vệ dữ liệu.`);
+      }
+
+      for (let i = 0; i < userIds.length; i += 50) {
+        const batch = userIds.slice(i, i + 50);
+        const { data, error } = await supabase.functions.invoke('admin-reset-students', {
+          body: { action: 'delete_batch', user_ids: batch },
+        });
+        if (error) throw error;
+
+        const batchFailed: Array<{ user_id: string; message: string }> = [];
+        if (Array.isArray(data?.failed)) batchFailed.push(...data.failed);
+        if (Array.isArray(data?.protected_ids) && data.protected_ids.length > 0) {
+          batchFailed.push(...data.protected_ids.map((id: string) => ({
+            user_id: id,
+            message: 'Tài khoản có thêm vai trò khác nên được bảo vệ.',
+          })));
+        }
+
+        if (batchFailed.length > 0) {
+          failed.push(...batchFailed);
+          return { total: initialTotal, failed };
+        }
+
+        completed += batch.length;
+        onProgress?.({ phase: 'reset', completed: Math.min(completed, initialTotal), total: initialTotal });
+      }
+    }
+
+    const finalRemaining = await countRemaining();
+    if (finalRemaining > 0) {
+      failed.push({
+        user_id: '',
+        message: `Còn ${finalRemaining} tài khoản STUDENT chưa xóa được.`,
+      });
+    }
+
+    return { total: initialTotal, failed };
   },
 
   async importRoster(
@@ -205,7 +251,7 @@ export const studentRosterResetService = {
   ): Promise<ImportAccountResult[]> {
     const validRows = rows.filter(r => r.is_valid && r.class_id);
     const results: ImportAccountResult[] = [];
-    const batchSize = 25;
+    const batchSize = 10;
     let completed = 0;
 
     for (let i = 0; i < validRows.length; i += batchSize) {

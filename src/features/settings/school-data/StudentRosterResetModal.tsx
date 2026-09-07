@@ -91,7 +91,8 @@ export default function StudentRosterResetModal({
       });
 
       if (resetResult.failed.length > 0) {
-        throw new Error(`Có ${resetResult.failed.length} tài khoản cũ chưa xóa được. Dừng import để tránh trùng dữ liệu.`);
+        const firstMessage = resetResult.failed[0]?.message;
+        throw new Error(firstMessage || `Có ${resetResult.failed.length} tài khoản cũ chưa xóa được. Dừng import để tránh trùng dữ liệu.`);
       }
 
       setProgressText('Đã xóa xong. Đang tạo lại tài khoản và phân lớp...');

@@ -75,13 +75,30 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body?.action;
 
-    if (action === "prepare") {
-      // Use the user-context client so auth.uid() inside the SECURITY DEFINER RPC
-      // is the real SUPER_ADMIN caller.
-      const { data, error } = await userClient.rpc("prepare_full_student_account_reset");
+    if (action === "count_remaining") {
+      const { data, error } = await userClient.rpc("count_resettable_student_accounts");
       if (error) {
-        console.error("prepare_full_student_account_reset failed:", error);
-        return jsonResponse(origin, 400, { success: false, message: error.message || "Không thể chuẩn bị reset học sinh." });
+        console.error("count_resettable_student_accounts failed:", error);
+        return jsonResponse(origin, 400, { success: false, message: error.message || "Không thể đếm tài khoản học sinh còn lại." });
+      }
+
+      return jsonResponse(origin, 200, {
+        success: true,
+        remaining: Number(data || 0),
+      });
+    }
+
+    if (action === "prepare_batch") {
+      // Keep each RPC result below PostgREST's row cap. The RPC itself also limits
+      // the destructive database cleanup to the exact same STUDENT-only batch.
+      const requestedLimit = Number(body?.limit || 500);
+      const limit = Math.max(1, Math.min(500, Number.isFinite(requestedLimit) ? requestedLimit : 500));
+      const { data, error } = await userClient.rpc("prepare_student_account_reset_batch", {
+        p_limit: limit,
+      });
+      if (error) {
+        console.error("prepare_student_account_reset_batch failed:", error);
+        return jsonResponse(origin, 400, { success: false, message: error.message || "Không thể chuẩn bị batch reset học sinh." });
       }
 
       const userIds = (data || []).map((row: any) => row.user_id).filter(Boolean);
