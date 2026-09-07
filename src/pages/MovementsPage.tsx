@@ -403,7 +403,7 @@ export default function MovementsPage() {
           Phong trào & Hoạt động
         </h1>
         <p className="font-sans text-sm text-slate-500 dark:text-slate-400">
-          Nơi cập nhật các chương trình thi đua, hoạt động theo từng thời điểm và các hoạt động thường xuyên của Liên đội THCS Tôn Thất Tùng.
+          Nơi cập nhật các chương trình thi đua, hoạt động theo từng thời điểm và các hoạt động thường xuyên của Liên đội THCS Trần Quang Khải.
         </p>
       </div>
 

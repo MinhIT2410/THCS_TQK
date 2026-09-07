@@ -11,7 +11,7 @@ import { ApiError, normalizeApiError } from '../../services/apiError';
 const MOCK_ALBUMS: Album[] = [
   {
     id: "album-1",
-    title: "Đại hội Đội viên THCS Tôn Thất Tùng năm học 2025 - 2026",
+    title: "Đại hội Đội viên THCS Trần Quang Khải năm học 2025 - 2026",
     description: "Hình ảnh ghi lại không khí rộn ràng, nghiêm túc và đoàn kết của Đại hội.",
     cover_image_url: "https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=800",
     status: "published",

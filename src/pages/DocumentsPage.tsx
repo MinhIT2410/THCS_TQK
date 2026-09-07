@@ -73,7 +73,7 @@ export default function DocumentsPage() {
       title: doc.title,
       category: categoryName as any,
       date: displayDate,
-      issuingBody: 'Liên đội Tôn Thất Tùng',
+      issuingBody: 'Liên đội Trần Quang Khải',
       fileUrl: doc.file_url,
       fileSize: sizeInMB,
       fileType: doc.mime_type || 'application/pdf',

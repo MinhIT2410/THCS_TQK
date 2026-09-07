@@ -5,8 +5,8 @@
 
 import { LeaderProfile, AchievementItem } from '../types';
 
-export const SCHOOL_NAME = "Liên Đội THCS Tôn Thất Tùng";
-export const SCHOOL_SLOGAN = "Thiếu nhi Tôn Thất Tùng - Chăm ngoan, học tốt, tiếp bước cha anh";
+export const SCHOOL_NAME = "Liên Đội THCS Trần Quang Khải";
+export const SCHOOL_SLOGAN = "Thiếu nhi Trần Quang Khải - Chăm ngoan, học tốt, tiếp bước cha anh";
 
 export const defaultLeaders: LeaderProfile[] = [
   {

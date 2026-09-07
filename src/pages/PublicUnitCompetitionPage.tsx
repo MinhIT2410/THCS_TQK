@@ -120,7 +120,7 @@ export default function PublicUnitCompetitionPage() {
             Kết quả thi đua chi đội hàng tuần
           </h1>
           <p className="text-xs text-red-50 dark:text-red-200 leading-relaxed line-clamp-2">
-            Công bố công khai tổng điểm thi đua và thứ hạng các chi đội THCS Tôn Thất Tùng. Bảng điểm được tổng hợp minh bạch từ sổ ghi nhận và quy tắc thi đua chính thức của Liên đội.
+            Công bố công khai tổng điểm thi đua và thứ hạng các chi đội THCS Trần Quang Khải. Bảng điểm được tổng hợp minh bạch từ sổ ghi nhận và quy tắc thi đua chính thức của Liên đội.
           </p>
         </div>
       </div>

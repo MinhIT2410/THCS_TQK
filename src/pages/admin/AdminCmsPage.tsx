@@ -244,7 +244,7 @@ export default function AdminCmsPage() {
                   rows={2}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Ví dụ: Phòng truyền thống Đội - Tầng 1 Nhà A, Trường THCS Tôn Thất Tùng..."
+                  placeholder="Ví dụ: Phòng truyền thống Đội - Tầng 1 Nhà A, Trường THCS Trần Quang Khải..."
                   className="w-full px-3.5 py-2.5 text-xs border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
                 />
               </div>

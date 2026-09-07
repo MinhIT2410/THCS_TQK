@@ -90,7 +90,7 @@ export default function ProgramsTab() {
             Chương Trình Thi Đua ({programs.length})
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Quản lý các đợt thi đua trọng tâm trong năm học của Liên đội THCS Tôn Thất Tùng
+            Quản lý các đợt thi đua trọng tâm trong năm học của Liên đội THCS Trần Quang Khải
           </p>
         </div>
 

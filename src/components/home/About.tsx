@@ -39,7 +39,7 @@ export default function About({ leaders, achievements }: AboutProps) {
           Giới Thiệu Về Liên Đội
         </h1>
         <p className="font-sans text-sm text-slate-500 dark:text-slate-400">
-          Hành trình xây dựng, phát triển và những thành tựu tự hào của Liên đội trường THCS Tôn Thất Tùng.
+          Hành trình xây dựng, phát triển và những thành tựu tự hào của Liên đội trường THCS Trần Quang Khải.
         </p>
       </div>
 
@@ -51,7 +51,7 @@ export default function About({ leaders, achievements }: AboutProps) {
             <span>Lịch Sử Thành Lập & Sứ Mệnh</span>
           </h2>
           <p className="font-sans text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
-            Liên đội THCS Tôn Thất Tùng được thành lập cùng thời điểm ra đời của nhà trường. Trải qua nhiều năm cống hiến, Liên đội đã trở thành cái nôi rèn luyện đạo đức, bồi đắp kỹ năng sống cho hàng vạn thế hệ học sinh thành phố Hồ Chí Minh. 
+            Liên đội THCS Trần Quang Khải được thành lập cùng thời điểm ra đời của nhà trường. Trải qua nhiều năm cống hiến, Liên đội đã trở thành cái nôi rèn luyện đạo đức, bồi đắp kỹ năng sống cho hàng vạn thế hệ học sinh thành phố Hồ Chí Minh. 
           </p>
           <p className="font-sans text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
             Với sứ mệnh bồi dưỡng những Đội viên xuất sắc phát triển toàn diện <strong>"Đức - Trí - Thể - Mỹ"</strong>, Liên đội liên tục đổi mới phương thức sinh hoạt Đội, áp dụng công nghệ và chuyển đổi số trong giáo dục truyền thống, bảo đảm 100% học sinh được rèn luyện trong môi trường công bằng, hạnh phúc và đầy thử thách sáng tạo.

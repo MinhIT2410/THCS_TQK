@@ -52,7 +52,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
           <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
             <GraduationCap className="h-6 w-6" />
             <span className="font-display text-sm font-bold tracking-tight text-slate-800 dark:text-white uppercase">
-              THCS Tôn Thất Tùng
+              THCS Trần Quang Khải
             </span>
           </div>
           <button

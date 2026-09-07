@@ -57,7 +57,7 @@ export type HomeHeroConfig = {
 
 export const HOME_HERO_DEFAULT: HomeHeroConfig = {
   slogan: "Tuổi nhỏ làm việc nhỏ, tùy theo sức của mình",
-  title: "Chào mừng bạn đến với Liên đội trường THCS Tôn Thất Tùng",
+  title: "Chào mừng bạn đến với Liên đội trường THCS Trần Quang Khải",
   subtitle: "Nơi ươm mầm tri thức, nuôi dưỡng ước mơ và xây dựng hoài bão cho tương lai Đội viên",
   description: "Nơi nuôi dưỡng lý tưởng cách mạng, bồi dưỡng kỹ năng toàn diện, rèn luyện phẩm chất Đội viên tài năng, sẵn sàng tiếp bước xây dựng Tổ quốc xã hội chủ nghĩa tươi đẹp.",
   backgroundImage: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1600&auto=format&fit=crop&q=80",

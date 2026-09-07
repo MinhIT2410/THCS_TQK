@@ -1,6 +1,6 @@
-# Liên Đội Trường THCS Tôn Thất Tùng
+# Liên Đội Trường THCS Trần Quang Khải
 
-Trang web Liên đội trường THCS Tôn Thất Tùng với các tính năng quản lý hoạt động, tin tức và đặc biệt là hệ thống **Visual Edit Mode (CMS)** trực quan.
+Trang web Liên đội trường THCS Trần Quang Khải với các tính năng quản lý hoạt động, tin tức và đặc biệt là hệ thống **Visual Edit Mode (CMS)** trực quan.
 
 ## CMS Visual Edit Mode
 

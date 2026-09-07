@@ -192,7 +192,7 @@ export default function Contact({ onSubmitContact }: ContactProps) {
             <div className="space-y-3 font-sans text-xs text-slate-600 dark:text-slate-400 font-medium">
               <div className="flex items-start space-x-3">
                 <MapPin className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
-                <span>{siteSettings.address || "Phòng truyền thống Đội - Tầng 1 Nhà A, Trường THCS Tôn Thất Tùng, số 3 đường D2, phường Tân Sơn Nhì, thành phố Hồ Chí Minh"}</span>
+                <span>{siteSettings.address || "Phòng truyền thống Đội - Tầng 1 Nhà A, Trường THCS Trần Quang Khải, số 3 đường D2, phường Tân Sơn Nhì, thành phố Hồ Chí Minh"}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="h-4.5 w-4.5 text-blue-500 shrink-0" />
@@ -288,7 +288,7 @@ export default function Contact({ onSubmitContact }: ContactProps) {
               </div>
               
               <div className="space-y-1 max-w-sm">
-                <h4 className="font-display font-bold text-slate-950 dark:text-white text-sm">{siteSettings.school_name || "Trường THCS Tôn Thất Tùng"}</h4>
+                <h4 className="font-display font-bold text-slate-950 dark:text-white text-sm">{siteSettings.school_name || "Trường THCS Trần Quang Khải"}</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{siteSettings.address || "số 3 đường D2, phường Tân Sơn Nhì, thành phố Hồ Chí Minh"}</p>
               </div>
 

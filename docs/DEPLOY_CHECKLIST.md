@@ -1,4 +1,4 @@
-# Deploy Checklist – THCS Tôn Thất Tùng Website
+# Deploy Checklist – THCS Trần Quang Khải Website
 
 Tài liệu này hướng dẫn chi tiết các bước chuẩn bị, thiết lập cơ sở dữ liệu Supabase, kiểm thử bảo mật và quy trình bàn giao hệ thống sang môi trường Production thực tế.
 
@@ -283,7 +283,7 @@ Xác minh trực tiếp cơ chế bảo mật ở tầng Cơ sở dữ liệu (D
 
 ## 17. Final Production Checklist
 
-Trước khi đưa website THCS Tôn Thất Tùng chính thức hoạt động:
+Trước khi đưa website THCS Trần Quang Khải chính thức hoạt động:
 
 * [ ] Kiểm tra lệnh biên dịch dự án: `npm run lint` hoàn thành không lỗi.
 * [ ] Kiểm tra lệnh đóng gói sản phẩm: `npm run build` tạo thư mục `dist` thành công.

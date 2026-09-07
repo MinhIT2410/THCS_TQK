@@ -187,12 +187,12 @@ export default function Header({
             {/* Brand Title */}
             <span className="hidden 2xl:block text-left font-sans font-bold tracking-[-0.010em] ml-2.5 whitespace-nowrap select-none">
               <span className="text-[13px] leading-none uppercase font-bold bg-gradient-to-r from-red-600 via-purple-700 to-blue-700 bg-clip-text text-transparent group-hover:from-red-500 group-hover:via-purple-600 group-hover:to-blue-600 transition-all duration-300">
-                LIÊN ĐỘI THCS TÔN THẤT TÙNG
+                LIÊN ĐỘI THCS TRẦN QUANG KHẢI
               </span>
             </span>
 
             <span className="sr-only">
-              {siteSettings.site_name || schoolName || "Liên đội THCS Tôn Thất Tùng"}
+              {siteSettings.site_name || schoolName || "Liên đội THCS Trần Quang Khải"}
             </span>
           </div>
 

@@ -67,7 +67,7 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
               )}
               <div>
                 <span className="block font-display text-sm font-bold tracking-tight text-white uppercase leading-normal">
-                  {siteSettings.footer_title || "LIÊN ĐỘI TRƯỜNG THCS TÔN THẤT TÙNG"}
+                  {siteSettings.footer_title || "LIÊN ĐỘI TRƯỜNG THCS TRẦN QUANG KHẢI"}
                 </span>
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
 
         {/* Bottom copyright info */}
         <div className="mt-12 border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 font-medium">
-          <p>© {SITE_CONFIG.currentYear} {siteSettings.school_name || "Trường THCS Tôn Thất Tùng"}. Tất cả quyền được bảo lưu.</p>
+          <p>© {SITE_CONFIG.currentYear} {siteSettings.school_name || "Trường THCS Trần Quang Khải"}. Tất cả quyền được bảo lưu.</p>
           <div className="flex items-center space-x-4 mt-3 md:mt-0">
             <span className="hover:text-slate-300 transition-colors">Điều khoản</span>
             <span>•</span>

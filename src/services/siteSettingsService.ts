@@ -9,9 +9,9 @@ import { SITE_CONFIG } from '../config/site';
 
 export const fallbackSiteSettings: SiteSettings = {
   id: 1,
-  site_name: SITE_CONFIG.websiteName || "Cổng thông tin Liên đội THCS Tôn Thất Tùng",
-  school_name: SITE_CONFIG.schoolName || "Trường THCS Tôn Thất Tùng",
-  slogan: SITE_CONFIG.slogan || "Thiếu nhi Tôn Thất Tùng - Chăm ngoan, học tốt, tiếp bước cha anh",
+  site_name: SITE_CONFIG.websiteName || "Cổng thông tin Liên đội THCS Trần Quang Khải",
+  school_name: SITE_CONFIG.schoolName || "Trường THCS Trần Quang Khải",
+  slogan: SITE_CONFIG.slogan || "Thiếu nhi Trần Quang Khải - Chăm ngoan, học tốt, tiếp bước cha anh",
   logo_url: SITE_CONFIG.logoUrl || "/logo.png",
   favicon_url: SITE_CONFIG.faviconUrl || "/favicon.ico",
   address: SITE_CONFIG.address || "số 3 đường D2, phường Tân Sơn Nhì, thành phố Hồ Chí Minh",
@@ -21,8 +21,8 @@ export const fallbackSiteSettings: SiteSettings = {
   youtube_url: "https://youtube.com/liendoitonthattung",
   zalo_url: "https://zalo.me/liendoitonthattung",
   map_url: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.263884813083!2d106.6346288!3d10.7907577!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752ea2b09088cb%3A0xc66cc05bc6173bc7!2zVHLGsOG7nW5nIFRIQ1MgVMO0biBUaOG6pXQgVMO5bmc!5e0!3m2!1svi!2s!4v1700000000000!5m2!1svi!2s",
-  footer_title: "LIÊN ĐỘI TRƯỜNG THCS TÔN THẤT TÙNG",
-  footer_description: SITE_CONFIG.description || "Trang tin tức, hoạt động, phong trào thi đua măng non và kho văn bản hướng dẫn nghiệp vụ công tác Đội tại trường THCS Tôn Thất Tùng.",
+  footer_title: "LIÊN ĐỘI TRƯỜNG THCS TRẦN QUANG KHẢI",
+  footer_description: SITE_CONFIG.description || "Trang tin tức, hoạt động, phong trào thi đua măng non và kho văn bản hướng dẫn nghiệp vụ công tác Đội tại trường THCS Trần Quang Khải.",
   contact_intro: "Mọi ý kiến đóng góp, phản hồi xin vui lòng liên hệ Ban Giám hiệu hoặc Ban Chỉ huy Liên đội qua thông tin bên dưới hoặc gửi tin nhắn trực tiếp.",
   home_hero_slogan: "Tuổi nhỏ làm việc nhỏ, tùy theo sức của mình",
   home_hero_title: "CỔNG THÔNG TIN ĐIỆN TỬ LIÊN ĐỘI",

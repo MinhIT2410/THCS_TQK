@@ -83,7 +83,7 @@ export default function AboutPage() {
           Đội TNTP Hồ Chí Minh & Liên đội
         </h1>
         <p className="font-sans text-slate-600 dark:text-slate-400 text-sm sm:text-base">
-          Thông tin, lịch sử về tổ chức Đội TNTP Hồ Chí Minh, Liên đội THCS Tôn Thất Tùng, các Đội nhóm măng non
+          Thông tin, lịch sử về tổ chức Đội TNTP Hồ Chí Minh, Liên đội THCS Trần Quang Khải, các Đội nhóm măng non
         </p>
       </div>
 

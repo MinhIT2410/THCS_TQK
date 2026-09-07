@@ -32,7 +32,7 @@ export const defaultDocuments: DocumentItem[] = [
     code: "02/HD-LĐ-RLDV",
     category: "Hướng dẫn",
     date: "2026-09-10",
-    issuingBody: "Liên đội THCS Tôn Thất Tùng",
+    issuingBody: "Liên đội THCS Trần Quang Khải",
     fileUrl: "#",
     fileSize: "2.4 MB"
   },

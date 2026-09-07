@@ -46,7 +46,7 @@ export default function GalleryPage() {
           Thư Viện Ảnh Liên Đội
         </h1>
         <p className="font-sans text-sm text-slate-500 dark:text-slate-400">
-          Lưu giữ những khoảnh khắc hoạt động sinh động, ý nghĩa của Liên đội trường THCS Tôn Thất Tùng, các phong trào thi đua và ngày hội thiếu nhi.
+          Lưu giữ những khoảnh khắc hoạt động sinh động, ý nghĩa của Liên đội trường THCS Trần Quang Khải, các phong trào thi đua và ngày hội thiếu nhi.
         </p>
       </div>
 
