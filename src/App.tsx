@@ -41,6 +41,7 @@ const AlbumDetailPage = React.lazy(() => import('./pages/AlbumDetailPage'));
 const AboutDetailPage = React.lazy(() => import('./pages/AboutDetailPage'));
 const MovementsPage = React.lazy(() => import('./pages/MovementsPage'));
 const MovementDetailPage = React.lazy(() => import('./pages/MovementDetailPage'));
+const FlagCeremonyPage = React.lazy(() => import('./pages/FlagCeremonyPage'));
 const CompetitionOverviewPage = React.lazy(() => import('./pages/CompetitionOverviewPage'));
 const PublicUnitCompetitionPage = React.lazy(() => import('./pages/PublicUnitCompetitionPage'));
 const StudentCompetitionPage = React.lazy(() => import('./pages/StudentCompetitionPage'));
@@ -322,7 +323,9 @@ function AppContent() {
           <Route path={ROUTES.NEWS} element={<NewsPage />} />
           <Route path={`${ROUTES.NEWS}/:slug`} element={<NewsDetailPage />} />
           <Route path={ROUTES.ACTIVITIES} element={<MovementsPage />} />
+          <Route path={ROUTES.FLAG_CEREMONY} element={<FlagCeremonyPage />} />
           <Route path={`${ROUTES.ACTIVITIES}/:slug`} element={<MovementDetailPage />} />
+          {/* Backward-compatible alias for the temporary movement URL used during flag-ceremony development. */}
           <Route path={ROUTES.MOVEMENTS} element={<Navigate to={ROUTES.ACTIVITIES} replace />} />
           <Route path={`${ROUTES.MOVEMENTS}/:slug`} element={<MovementDetailPage />} />
           <Route path={ROUTES.GALLERY} element={<GalleryPage />} />

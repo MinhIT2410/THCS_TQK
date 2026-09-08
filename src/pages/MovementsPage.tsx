@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { movementService } from '../services/movementService';
 import { MovementTimelineTreeSvg } from '../components/activity/MovementTimelineTreeSvg';
+import { ROUTES } from '../config/routes';
 import {
   MovementCampaign,
   CampaignType,
@@ -473,7 +474,14 @@ export default function MovementsPage() {
                 transition={{ duration: 0.3 }}
                 className="group cursor-pointer flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg hover:border-red-500/30 transition-all duration-300 relative"
               >
-                <Link to={`/hoat-dong/${campaign.slug}`} className="flex flex-col h-full justify-between">
+                <Link
+                  to={
+                    campaign.slug === 'sinh-hoat-dau-tuan' || campaign.title.trim().toLowerCase() === 'sinh hoạt đầu tuần'
+                      ? ROUTES.FLAG_CEREMONY
+                      : `${ROUTES.ACTIVITIES}/${campaign.slug}`
+                  }
+                  className="flex flex-col h-full justify-between"
+                >
                   <div>
                     {/* Cover Image Container */}
                     <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
