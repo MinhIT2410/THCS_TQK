@@ -25,6 +25,7 @@ import {
   Link as LinkIcon,
   RefreshCw,
   Image as ImageIcon,
+  Video,
   Archive,
   ShieldAlert
 } from 'lucide-react';
@@ -80,6 +81,8 @@ export default function AdminMovementsPage() {
     summary: '',
     content: '',
     cover_image_url: '',
+    national_anthem_video_url: '',
+    team_song_video_url: '',
     campaign_type: 'theo_dot' as CampaignType,
     start_date: '',
     end_date: '',
@@ -90,6 +93,7 @@ export default function AdminMovementsPage() {
     academic_year: '2025-2026',
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingCeremonyVideo, setUploadingCeremonyVideo] = useState<'national' | 'team' | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Child Event Form State
@@ -160,6 +164,8 @@ export default function AdminMovementsPage() {
       summary: '',
       content: '',
       cover_image_url: '',
+      national_anthem_video_url: '',
+      team_song_video_url: '',
       campaign_type: 'theo_dot',
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0],
@@ -180,6 +186,8 @@ export default function AdminMovementsPage() {
       summary: c.summary || '',
       content: c.content || '',
       cover_image_url: c.cover_image_url || '',
+      national_anthem_video_url: c.national_anthem_video_url || '',
+      team_song_video_url: c.team_song_video_url || '',
       campaign_type: c.campaign_type,
       start_date: c.start_date ? c.start_date.split('T')[0] : '',
       end_date: c.end_date ? c.end_date.split('T')[0] : '',
@@ -218,6 +226,29 @@ export default function AdminMovementsPage() {
     }
   };
 
+  const handleCeremonyVideoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    kind: 'national' | 'team'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingCeremonyVideo(kind);
+      const url = await storageService.uploadVideo(file, 'ceremony-videos');
+      setFormData(prev => ({
+        ...prev,
+        [kind === 'national' ? 'national_anthem_video_url' : 'team_song_video_url']: url,
+      }));
+      showSuccess(kind === 'national' ? 'Đã tải video Quốc ca.' : 'Đã tải video Đội ca.');
+    } catch (err: any) {
+      alert(err.message || 'Tải video lên thất bại');
+    } finally {
+      setUploadingCeremonyVideo(null);
+      e.target.value = '';
+    }
+  };
+
   // Save campaign
   const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,6 +265,8 @@ export default function AdminMovementsPage() {
         summary: formData.summary.trim() || null,
         content: formData.content.trim() || null,
         cover_image_url: formData.cover_image_url.trim() || null,
+        national_anthem_video_url: formData.national_anthem_video_url.trim() || null,
+        team_song_video_url: formData.team_song_video_url.trim() || null,
         campaign_type: formData.campaign_type,
         start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
         end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -804,6 +837,68 @@ export default function AdminMovementsPage() {
                     </label>
                   </div>
                 </div>
+
+                {(formData.slug === 'sinh-hoat-dau-tuan' || formData.title.trim().toLowerCase() === 'sinh hoạt đầu tuần') && (
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900/50 dark:bg-blue-950/20 space-y-4">
+                    <div className="flex items-start gap-2">
+                      <Video className="mt-0.5 h-4 w-4 text-blue-600" />
+                      <div>
+                        <div className="text-xs font-extrabold text-blue-900 dark:text-blue-200">Video nghi lễ chào cờ</div>
+                        <div className="mt-0.5 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
+                          Hai video sẽ được tải sẵn trên trang Sinh hoạt đầu tuần. Khi bắt đầu chào cờ, Quốc ca phát trước và Đội ca tự phát tiếp theo.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Video Quốc ca</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={formData.national_anthem_video_url}
+                          onChange={(e) => setFormData(prev => ({ ...prev, national_anthem_video_url: e.target.value }))}
+                          placeholder="https://... hoặc tải video MP4 lên"
+                          className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                        />
+                        <label className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 cursor-pointer shrink-0 inline-flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{uploadingCeremonyVideo === 'national' ? 'Đang tải...' : 'Tải video'}</span>
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime"
+                            onChange={(e) => handleCeremonyVideoUpload(e, 'national')}
+                            className="hidden"
+                            disabled={uploadingCeremonyVideo !== null}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Video Đội ca</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={formData.team_song_video_url}
+                          onChange={(e) => setFormData(prev => ({ ...prev, team_song_video_url: e.target.value }))}
+                          placeholder="https://... hoặc tải video MP4 lên"
+                          className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                        />
+                        <label className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 cursor-pointer shrink-0 inline-flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{uploadingCeremonyVideo === 'team' ? 'Đang tải...' : 'Tải video'}</span>
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime"
+                            onChange={(e) => handleCeremonyVideoUpload(e, 'team')}
+                            className="hidden"
+                            disabled={uploadingCeremonyVideo !== null}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary */}
                 <div className="space-y-1">

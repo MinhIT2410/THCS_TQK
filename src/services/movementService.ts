@@ -162,6 +162,8 @@ export const movementService = {
       summary: data.summary?.trim() || null,
       content: data.content?.trim() || null,
       cover_image_url: data.cover_image_url?.trim() || null,
+      national_anthem_video_url: data.national_anthem_video_url?.trim() || null,
+      team_song_video_url: data.team_song_video_url?.trim() || null,
       campaign_type: data.campaign_type || 'theo_dot',
       start_date: data.start_date || null,
       end_date: data.end_date || null,
@@ -213,6 +215,8 @@ export const movementService = {
     if (data.summary !== undefined) payload.summary = data.summary?.trim() || null;
     if (data.content !== undefined) payload.content = data.content?.trim() || null;
     if (data.cover_image_url !== undefined) payload.cover_image_url = data.cover_image_url?.trim() || null;
+    if (data.national_anthem_video_url !== undefined) payload.national_anthem_video_url = data.national_anthem_video_url?.trim() || null;
+    if (data.team_song_video_url !== undefined) payload.team_song_video_url = data.team_song_video_url?.trim() || null;
     if (data.campaign_type !== undefined) payload.campaign_type = data.campaign_type;
     if (data.start_date !== undefined) payload.start_date = data.start_date || null;
     if (data.end_date !== undefined) payload.end_date = data.end_date || null;
@@ -305,6 +309,8 @@ export const movementService = {
       location: data.location?.trim() || null,
       status: data.status || 'sap_dien_ra',
       cover_image_url: data.cover_image_url?.trim() || null,
+      national_anthem_video_url: data.national_anthem_video_url?.trim() || null,
+      team_song_video_url: data.team_song_video_url?.trim() || null,
       summary_result: data.summary_result?.trim() || null,
       display_order: Number(data.display_order) >= 0 ? Number(data.display_order) : 0,
     };
@@ -338,6 +344,8 @@ export const movementService = {
     if (data.location !== undefined) payload.location = data.location?.trim() || null;
     if (data.status !== undefined) payload.status = data.status;
     if (data.cover_image_url !== undefined) payload.cover_image_url = data.cover_image_url?.trim() || null;
+    if (data.national_anthem_video_url !== undefined) payload.national_anthem_video_url = data.national_anthem_video_url?.trim() || null;
+    if (data.team_song_video_url !== undefined) payload.team_song_video_url = data.team_song_video_url?.trim() || null;
     if (data.summary_result !== undefined) payload.summary_result = data.summary_result?.trim() || null;
     if (data.display_order !== undefined) payload.display_order = Number(data.display_order) >= 0 ? Number(data.display_order) : 0;
 

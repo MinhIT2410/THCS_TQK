@@ -114,6 +114,48 @@ export async function deleteImageByUrl(url: string): Promise<void> {
   }
 }
 
+
+/**
+ * Kiểm tra video nghi lễ hợp lệ.
+ * Cho phép MP4/WEBM/MOV, tối đa 100MB ở phía trình duyệt.
+ * Supabase Storage vẫn có thể áp dụng giới hạn thấp hơn theo cấu hình dự án.
+ */
+export function validateVideoFile(file: File): string | null {
+  const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+  if (!allowedTypes.includes(file.type)) {
+    return 'Định dạng video không hợp lệ. Chỉ chấp nhận MP4, WEBM hoặc MOV.';
+  }
+
+  const maxSizeInBytes = 100 * 1024 * 1024;
+  if (file.size > maxSizeInBytes) {
+    return 'Dung lượng video vượt quá 100MB.';
+  }
+
+  return null;
+}
+
+/** Upload video lên school-media và trả về public URL. */
+export async function uploadVideo(file: File, folder: string = 'ceremony-videos'): Promise<string> {
+  const validationError = validateVideoFile(file);
+  if (validationError) throw new Error(validationError);
+
+  const currentYear = new Date().getFullYear();
+  const safeName = getSafeFileName(file.name);
+  const path = `${folder}/${currentYear}/${safeName}`;
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { cacheControl: '86400', upsert: false });
+
+  if (error) {
+    throw new Error(`Tải video lên Supabase thất bại: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error('Không thể lấy public URL cho video vừa tải lên.');
+  return data.publicUrl;
+}
+
 export const DOCUMENT_STORAGE_BUCKET = 'school-document';
 
 /**
@@ -287,6 +329,8 @@ export async function uploadImageToExactPath(file: File, exactPath: string, opti
 export const storageService = {
   validateImageFile,
   uploadImage,
+  validateVideoFile,
+  uploadVideo,
   deleteImageByUrl,
   validateDocumentFile,
   uploadDocument,

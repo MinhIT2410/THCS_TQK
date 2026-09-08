@@ -18,6 +18,8 @@ export interface MovementCampaign {
   summary?: string | null;
   content?: string | null;
   cover_image_url?: string | null;
+  national_anthem_video_url?: string | null;
+  team_song_video_url?: string | null;
   campaign_type: CampaignType;
   start_date?: string | null;
   end_date?: string | null;
@@ -45,6 +47,8 @@ export interface MovementEvent {
   location?: string | null;
   status: EventStatus;
   cover_image_url?: string | null;
+  national_anthem_video_url?: string | null;
+  team_song_video_url?: string | null;
   summary_result?: string | null;
   display_order: number;
   created_at?: string;
