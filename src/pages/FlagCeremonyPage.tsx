@@ -7,6 +7,7 @@ import { movementService } from '../services/movementService';
 
 type CeremonyView = 'waiting' | 'countdown' | 'salute';
 type MediaPhase = 'idle' | 'national' | 'team' | 'done';
+type MediaLoadState = 'missing' | 'loading' | 'ready' | 'error';
 
 export default function FlagCeremonyPage() {
   const { hasAnyRole } = useAuth();
@@ -20,6 +21,12 @@ export default function FlagCeremonyPage() {
   const [mediaPhase, setMediaPhase] = useState<MediaPhase>('idle');
   const [audioReady, setAudioReady] = useState(false);
   const [mediaBlocked, setMediaBlocked] = useState(false);
+  const [nationalLoadState, setNationalLoadState] = useState<MediaLoadState>('missing');
+  const [teamLoadState, setTeamLoadState] = useState<MediaLoadState>('missing');
+  const [nationalPlaybackUrl, setNationalPlaybackUrl] = useState('');
+  const [teamPlaybackUrl, setTeamPlaybackUrl] = useState('');
+  const [nationalCached, setNationalCached] = useState(false);
+  const [teamCached, setTeamCached] = useState(false);
 
   const nationalRef = useRef<HTMLVideoElement | null>(null);
   const teamRef = useRef<HTMLVideoElement | null>(null);
@@ -43,6 +50,85 @@ export default function FlagCeremonyPage() {
       .catch((err) => console.error('Không thể tải video nghi lễ:', err));
     return () => { cancelled = true; };
   }, []);
+
+
+
+  useEffect(() => {
+    let cancelled = false;
+    const objectUrls: string[] = [];
+
+    const loadOne = async (
+      url: string,
+      setLoadState: React.Dispatch<React.SetStateAction<MediaLoadState>>,
+      setPlaybackUrl: React.Dispatch<React.SetStateAction<string>>,
+      setCached: React.Dispatch<React.SetStateAction<boolean>>,
+    ) => {
+      if (!url) {
+        setLoadState('missing');
+        setPlaybackUrl('');
+        setCached(false);
+        return;
+      }
+
+      setLoadState('loading');
+      setCached(false);
+
+      try {
+        const cacheName = 'tqk-flag-ceremony-media-v1';
+        let response: Response | undefined;
+        let fromCache = false;
+
+        if ('caches' in window) {
+          const cache = await caches.open(cacheName);
+          const cached = await cache.match(url);
+          if (cached) {
+            response = cached;
+            fromCache = true;
+          } else {
+            const fetched = await fetch(url, { cache: 'force-cache' });
+            if (!fetched.ok) throw new Error(`HTTP ${fetched.status}`);
+            try {
+              await cache.put(url, fetched.clone());
+            } catch (cacheError) {
+              console.warn('Không thể lưu video vào Cache Storage:', cacheError);
+            }
+            response = fetched;
+          }
+        } else {
+          const fetched = await fetch(url, { cache: 'force-cache' });
+          if (!fetched.ok) throw new Error(`HTTP ${fetched.status}`);
+          response = fetched;
+        }
+
+        const blob = await response.blob();
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(blob);
+        objectUrls.push(objectUrl);
+        setPlaybackUrl(objectUrl);
+        setCached(fromCache);
+        setLoadState('ready');
+      } catch (err) {
+        console.warn('Không thể tải sẵn video nghi lễ, sẽ dùng URL trực tiếp:', err);
+        if (cancelled) return;
+        setPlaybackUrl(url);
+        setLoadState('error');
+      }
+    };
+
+    const run = async () => {
+      await loadOne(nationalAnthemUrl, setNationalLoadState, setNationalPlaybackUrl, setNationalCached);
+      if (cancelled) return;
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      await loadOne(teamSongUrl, setTeamLoadState, setTeamPlaybackUrl, setTeamCached);
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [nationalAnthemUrl, teamSongUrl]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 200);
@@ -109,11 +195,29 @@ export default function FlagCeremonyPage() {
 
   const handleTeamEnded = () => setMediaPhase('done');
 
-  const prepareAudio = () => {
-    // Một thao tác trực tiếp của giáo viên giúp trình duyệt cho phép phát âm thanh
-    // khi tín hiệu Realtime đến sau đó.
-    setAudioReady(true);
-    setMediaBlocked(false);
+  const prepareAudio = async () => {
+    // Dùng chính các thẻ video sẽ phát nghi lễ để "mở khóa" âm thanh bằng thao tác trực tiếp của giáo viên.
+    const elements = [
+      nationalAnthemUrl ? nationalRef.current : null,
+      teamSongUrl ? teamRef.current : null,
+    ].filter(Boolean) as HTMLVideoElement[];
+
+    try {
+      for (const el of elements) {
+        el.muted = false;
+        el.volume = 0;
+        await el.play();
+        el.pause();
+        el.currentTime = 0;
+        el.volume = 1;
+      }
+      setAudioReady(true);
+      setMediaBlocked(false);
+    } catch (err) {
+      console.warn('Không thể chuẩn bị âm thanh tự động:', err);
+      setAudioReady(false);
+      setMediaBlocked(true);
+    }
   };
 
   const retryCurrentMedia = () => {
@@ -138,6 +242,8 @@ export default function FlagCeremonyPage() {
   };
 
   const hasCeremonyMedia = Boolean(nationalAnthemUrl || teamSongUrl);
+  const allConfiguredMediaReady = (!nationalAnthemUrl || nationalLoadState === 'ready') && (!teamSongUrl || teamLoadState === 'ready');
+  const allConfiguredMediaUsable = (!nationalAnthemUrl || nationalLoadState !== 'loading') && (!teamSongUrl || teamLoadState !== 'loading');
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 pb-20">
@@ -179,12 +285,18 @@ export default function FlagCeremonyPage() {
               {hasCeremonyMedia && (
                 <button
                   type="button"
-                  onClick={prepareAudio}
-                  className={`mx-auto mt-6 inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-extrabold transition ${audioReady ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  onClick={() => void prepareAudio()}
+                  disabled={!allConfiguredMediaUsable}
+                  className={`mx-auto mt-6 inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-50 ${audioReady ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                 >
                   {audioReady ? <CheckCircle2 className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                  {audioReady ? 'Âm thanh đã sẵn sàng' : 'BẬT ÂM THANH / SẴN SÀNG'}
+                  {audioReady ? 'SẴN SÀNG CHÀO CỜ' : allConfiguredMediaUsable ? 'BẬT ÂM THANH / SẴN SÀNG' : 'ĐANG TẢI VIDEO...'}
                 </button>
+              )}
+              {hasCeremonyMedia && (
+                <p className={`mt-3 text-xs font-bold ${audioReady ? 'text-emerald-600' : allConfiguredMediaReady ? 'text-blue-600' : 'text-amber-600'}`}>
+                  {audioReady ? '✓ Máy lớp đã sẵn sàng: Realtime + video + âm thanh' : allConfiguredMediaReady ? '✓ Video đã tải xong trên máy này. Bấm nút trên để chuẩn bị âm thanh.' : 'Đang tải trước video để khi có hiệu lệnh không phải tải lại từ đầu.'}
+                </p>
               )}
             </div>
           )}
@@ -197,11 +309,11 @@ export default function FlagCeremonyPage() {
             </div>
           )}
 
-          {view === 'salute' && mediaPhase === 'national' && nationalAnthemUrl && (
-            <div className="w-full">
+          {nationalAnthemUrl && (
+            <div className={view === 'salute' && mediaPhase === 'national' ? 'w-full' : 'hidden'}>
               <div className="mb-4 text-sm font-extrabold uppercase tracking-[0.2em] text-red-600">NGHIÊM! — CHÀO CỜ, CHÀO!</div>
               <div className="mx-auto overflow-hidden rounded-2xl bg-black shadow-lg max-w-4xl aspect-video">
-                <video ref={nationalRef} src={nationalAnthemUrl} preload="auto" playsInline onEnded={handleNationalEnded} className="h-full w-full object-contain" />
+                <video ref={nationalRef} src={nationalPlaybackUrl || nationalAnthemUrl} preload="auto" playsInline onEnded={handleNationalEnded} className="h-full w-full object-contain" />
               </div>
               <div className="mt-4 text-xl font-black text-slate-900 dark:text-white">QUỐC CA</div>
               {mediaBlocked && (
@@ -212,11 +324,11 @@ export default function FlagCeremonyPage() {
             </div>
           )}
 
-          {view === 'salute' && mediaPhase === 'team' && teamSongUrl && (
-            <div className="w-full">
+          {teamSongUrl && (
+            <div className={view === 'salute' && mediaPhase === 'team' ? 'w-full' : 'hidden'}>
               <div className="mb-4 text-sm font-extrabold uppercase tracking-[0.2em] text-blue-600">Tiếp tục nghi lễ</div>
               <div className="mx-auto overflow-hidden rounded-2xl bg-black shadow-lg max-w-4xl aspect-video">
-                <video ref={teamRef} src={teamSongUrl} preload="auto" playsInline onEnded={handleTeamEnded} className="h-full w-full object-contain" />
+                <video ref={teamRef} src={teamPlaybackUrl || teamSongUrl} preload="auto" playsInline onEnded={handleTeamEnded} className="h-full w-full object-contain" />
               </div>
               <div className="mt-4 text-xl font-black text-slate-900 dark:text-white">ĐỘI CA</div>
               {mediaBlocked && (
@@ -240,8 +352,6 @@ export default function FlagCeremonyPage() {
             </div>
           )}
 
-          {view !== 'salute' && nationalAnthemUrl && <video src={nationalAnthemUrl} preload="auto" className="hidden" aria-hidden="true" />}
-          {view !== 'salute' && teamSongUrl && <video src={teamSongUrl} preload="auto" className="hidden" aria-hidden="true" />}
         </section>
 
         <aside className="space-y-4">
@@ -252,8 +362,18 @@ export default function FlagCeremonyPage() {
             <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
               {isSupabaseConfigured ? 'Realtime đang hoạt động' : 'Chế độ cục bộ'}
             </div>
+            <div className="mt-3 space-y-2 text-xs font-bold">
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!nationalAnthemUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : nationalLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : nationalLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
+                <span>Quốc ca</span>
+                <span>{!nationalAnthemUrl ? 'Chưa cài' : nationalLoadState === 'ready' ? (nationalCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : nationalLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
+              </div>
+              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!teamSongUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : teamLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : teamLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
+                <span>Đội ca</span>
+                <span>{!teamSongUrl ? 'Chưa cài' : teamLoadState === 'ready' ? (teamCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : teamLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
+              </div>
+            </div>
             <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              {hasCeremonyMedia ? 'Video Quốc ca và Đội ca đã được nạp từ mục quản trị Sinh hoạt đầu tuần.' : 'Chưa cài video nghi lễ trong mục quản trị Sinh hoạt đầu tuần.'}
+              {!hasCeremonyMedia ? 'Chưa cài video nghi lễ trong mục quản trị Sinh hoạt đầu tuần.' : allConfiguredMediaReady ? 'Video đã được tải đầy đủ trên máy này. Những lần sau trình duyệt ưu tiên dùng bản cache để giảm tải mạng trường.' : 'Giữ trang mở trước giờ chào cờ để video tải xong. Nếu cache không dùng được, hệ thống vẫn có thể phát trực tiếp từ URL.'}
             </p>
           </div>
 
