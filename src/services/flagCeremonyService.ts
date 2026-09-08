@@ -52,7 +52,7 @@ export const flagCeremonyService = {
 
     if (!isSupabaseConfigured) return signal;
 
-    const channel = supabase.channel(`${CHANNEL_NAME}-sender-${signal.id}`);
+    const channel = supabase.channel(CHANNEL_NAME);
 
     await new Promise<void>((resolve, reject) => {
       const timeout = window.setTimeout(() => reject(new Error('Không thể kết nối Realtime.')), 5000);
