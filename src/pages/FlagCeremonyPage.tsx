@@ -11,7 +11,7 @@ type MediaLoadState = 'missing' | 'loading' | 'ready' | 'error';
 
 export default function FlagCeremonyPage() {
   const { hasAnyRole } = useAuth();
-  const canControl = hasAnyRole(['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'STAFF']);
+  const canControl = hasAnyRole(['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL']);
   const [signal, setSignal] = useState<CeremonyStartSignal | null>(null);
   const [now, setNow] = useState(Date.now());
   const [sending, setSending] = useState(false);
@@ -247,14 +247,29 @@ export default function FlagCeremonyPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 pb-20">
-      <div className="overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-950 via-blue-900 to-slate-900 text-white shadow-xl">
+      <div className={`overflow-hidden rounded-3xl border text-white shadow-xl ${canControl ? 'border-red-200 bg-gradient-to-br from-red-950 via-red-900 to-slate-950' : 'border-blue-100 bg-gradient-to-br from-blue-950 via-blue-900 to-slate-900'}`}>
         <div className="p-6 sm:p-8 lg:p-10">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold tracking-wide">
-            <Flag className="h-4 w-4" /> SINH HOẠT ĐẦU TUẦN
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black tracking-wide ${canControl ? 'bg-red-500/20 text-red-100 ring-1 ring-red-300/30' : 'bg-white/10 text-white'}`}>
+              {canControl ? <ShieldCheck className="h-4 w-4" /> : <Flag className="h-4 w-4" />}
+              {canControl ? 'CHẾ ĐỘ ĐIỀU HÀNH' : 'MÀN HÌNH LỚP'}
+            </div>
+            {canControl && (
+              <a
+                href="/quan-tri/hoat-dong-phong-trao"
+                className="rounded-xl bg-white/10 px-4 py-2 text-xs font-extrabold text-white hover:bg-white/20"
+              >
+                Cấu hình Quốc ca / Đội ca
+              </a>
+            )}
           </div>
-          <h1 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">Chào cờ đồng bộ toàn trường</h1>
-          <p className="mt-3 max-w-3xl text-sm sm:text-base leading-relaxed text-blue-100">
-            Giáo viên mở sẵn trang này. Khi có tín hiệu, các lớp có tiết HĐTN trong cùng buổi đứng dậy và thực hiện nghi lễ chào cờ cùng lúc với học sinh dưới sân.
+          <h1 className="mt-3 font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            {canControl ? 'Bảng điều khiển chào cờ' : 'Chào cờ đồng bộ toàn trường'}
+          </h1>
+          <p className={`mt-3 max-w-3xl text-sm sm:text-base leading-relaxed ${canControl ? 'text-red-100' : 'text-blue-100'}`}>
+            {canControl
+              ? 'Đây là màn hình dành cho Ban tổ chức. Bấm bắt đầu một lần để gửi tín hiệu đến tất cả lớp đang mở màn hình chào cờ.'
+              : 'Giáo viên chỉ cần mở sẵn trang này, bật âm thanh và giữ màn hình chờ. Khi Ban tổ chức phát lệnh, lớp sẽ tự đếm ngược và phát nghi lễ.'}
           </p>
         </div>
       </div>
@@ -270,19 +285,46 @@ export default function FlagCeremonyPage() {
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+      {canControl && (
+        <div className="mt-6 rounded-3xl border-2 border-red-200 bg-red-50/70 p-5 shadow-sm dark:border-red-900/60 dark:bg-red-950/20">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-black text-red-700 dark:text-red-300">
+                <ShieldCheck className="h-5 w-5" /> BAN TỔ CHỨC
+              </div>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Nút điều hành chỉ hiển thị cho Quản trị hệ thống / Hiệu trưởng / Hiệu phó. Giáo viên không nhìn thấy khu vực này.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={start}
+              disabled={sending}
+              className="min-w-[260px] rounded-2xl bg-red-600 px-6 py-4 text-base font-black text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              <Play className="h-5 w-5" /> {sending ? 'Đang gửi tín hiệu...' : 'BẮT ĐẦU CHÀO CỜ'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`mt-6 grid gap-6 ${canControl ? 'lg:grid-cols-[1fr_340px]' : 'grid-cols-1'}`}>
         <section className="min-h-[430px] rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-10 flex items-center justify-center text-center overflow-hidden">
           {view === 'waiting' && (
             <div>
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40">
+              <div className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full ${canControl ? 'bg-red-50 text-red-600 dark:bg-red-950/40' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40'}`}>
                 <Radio className="h-11 w-11" />
               </div>
-              <div className="mt-6 text-xs font-extrabold uppercase tracking-[0.24em] text-blue-600">Đã kết nối</div>
+              <div className={`mt-6 text-xs font-extrabold uppercase tracking-[0.24em] ${canControl ? 'text-red-600' : 'text-blue-600'}`}>
+                {canControl ? 'Màn hình xem trước' : 'Đã kết nối'}
+              </div>
               <h2 className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">Đang chờ chào cờ</h2>
               <p className="mx-auto mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-slate-500 dark:text-slate-400">
-                Giáo viên cho học sinh ổn định tại lớp và giữ trang này mở. Khi Ban tổ chức bắt đầu, màn hình sẽ tự chuyển sang đếm ngược.
+                {canControl
+                  ? 'Khi bấm BẮT ĐẦU CHÀO CỜ, màn hình này và toàn bộ máy lớp sẽ cùng chuyển sang đếm ngược.'
+                  : 'Cho học sinh ổn định tại lớp, bật âm thanh một lần và giữ trang này mở. Không cần thao tác gì thêm.'}
               </p>
-              {hasCeremonyMedia && (
+              {hasCeremonyMedia && !canControl && (
                 <button
                   type="button"
                   onClick={() => void prepareAudio()}
@@ -293,9 +335,9 @@ export default function FlagCeremonyPage() {
                   {audioReady ? 'SẴN SÀNG CHÀO CỜ' : allConfiguredMediaUsable ? 'BẬT ÂM THANH / SẴN SÀNG' : 'ĐANG TẢI VIDEO...'}
                 </button>
               )}
-              {hasCeremonyMedia && (
+              {hasCeremonyMedia && !canControl && (
                 <p className={`mt-3 text-xs font-bold ${audioReady ? 'text-emerald-600' : allConfiguredMediaReady ? 'text-blue-600' : 'text-amber-600'}`}>
-                  {audioReady ? '✓ Máy lớp đã sẵn sàng: Realtime + video + âm thanh' : allConfiguredMediaReady ? '✓ Video đã tải xong trên máy này. Bấm nút trên để chuẩn bị âm thanh.' : 'Đang tải trước video để khi có hiệu lệnh không phải tải lại từ đầu.'}
+                  {audioReady ? '✓ Máy lớp đã sẵn sàng: Realtime + video + âm thanh' : allConfiguredMediaReady ? '✓ Video đã tải xong. Bấm nút trên để chuẩn bị âm thanh.' : 'Đang tải trước video để khi có hiệu lệnh không phải tải lại từ đầu.'}
                 </p>
               )}
             </div>
@@ -351,58 +393,57 @@ export default function FlagCeremonyPage() {
               )}
             </div>
           )}
-
         </section>
 
-        <aside className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white">
-              <Wifi className="h-5 w-5 text-emerald-600" /> Trạng thái
-            </div>
-            <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-              {isSupabaseConfigured ? 'Realtime đang hoạt động' : 'Chế độ cục bộ'}
-            </div>
-            <div className="mt-3 space-y-2 text-xs font-bold">
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!nationalAnthemUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : nationalLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : nationalLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
-                <span>Quốc ca</span>
-                <span>{!nationalAnthemUrl ? 'Chưa cài' : nationalLoadState === 'ready' ? (nationalCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : nationalLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
-              </div>
-              <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!teamSongUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : teamLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : teamLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
-                <span>Đội ca</span>
-                <span>{!teamSongUrl ? 'Chưa cài' : teamLoadState === 'ready' ? (teamCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : teamLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
-              </div>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              {!hasCeremonyMedia ? 'Chưa cài video nghi lễ trong mục quản trị Sinh hoạt đầu tuần.' : allConfiguredMediaReady ? 'Video đã được tải đầy đủ trên máy này. Những lần sau trình duyệt ưu tiên dùng bản cache để giảm tải mạng trường.' : 'Giữ trang mở trước giờ chào cờ để video tải xong. Nếu cache không dùng được, hệ thống vẫn có thể phát trực tiếp từ URL.'}
-            </p>
-          </div>
-
-          {canControl && (
-            <div className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-900/50 dark:bg-slate-900">
+        {canControl && (
+          <aside className="space-y-4">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white">
-                <ShieldCheck className="h-5 w-5 text-red-600" /> Ban tổ chức
+                <Wifi className="h-5 w-5 text-emerald-600" /> Tình trạng hệ thống
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Bấm một lần. Tất cả lớp đang mở trang cùng đếm ngược 10 giây; sau đó Quốc ca và Đội ca tự phát theo thứ tự.
+              <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {isSupabaseConfigured ? 'Realtime đang hoạt động' : 'Chế độ cục bộ'}
+              </div>
+              <div className="mt-3 space-y-2 text-xs font-bold">
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!nationalAnthemUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : nationalLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : nationalLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
+                  <span>Quốc ca</span>
+                  <span>{!nationalAnthemUrl ? 'Chưa cài' : nationalLoadState === 'ready' ? (nationalCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : nationalLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
+                </div>
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${!teamSongUrl ? 'bg-slate-50 text-slate-500 dark:bg-slate-800' : teamLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : teamLoadState === 'loading' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'}`}>
+                  <span>Đội ca</span>
+                  <span>{!teamSongUrl ? 'Chưa cài' : teamLoadState === 'ready' ? (teamCached ? 'Sẵn sàng · cache' : 'Sẵn sàng') : teamLoadState === 'loading' ? 'Đang tải...' : 'Dùng trực tiếp'}</span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Trạng thái ở đây là trạng thái media trên máy điều hành. Các máy lớp tự tải/cache video khi giáo viên mở trang.
               </p>
-              <button
-                type="button"
-                onClick={start}
-                disabled={sending}
-                className="mt-5 w-full rounded-2xl bg-red-600 px-4 py-4 text-base font-black text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                <Play className="h-5 w-5" /> {sending ? 'Đang gửi tín hiệu...' : 'BẮT ĐẦU CHÀO CỜ'}
-              </button>
+            </div>
+
+            <div className="rounded-3xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-900/50 dark:bg-slate-900">
+              <div className="text-xs font-black uppercase tracking-wider text-red-600">Điều khiển cục bộ</div>
               <button
                 type="button"
                 onClick={() => { setSignal(null); setMediaPhase('idle'); startedSignalRef.current = null; }}
-                className="mt-2 w-full rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Trở về màn hình chờ trên máy này
               </button>
             </div>
-          )}
-        </aside>
+          </aside>
+        )}
+
+        {!canControl && (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white">
+              <Wifi className="h-5 w-5 text-emerald-600" /> Trạng thái máy lớp
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl bg-emerald-50 px-3 py-3 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">Realtime: Sẵn sàng</div>
+              <div className={`rounded-xl px-3 py-3 text-xs font-bold ${nationalAnthemUrl && nationalLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'}`}>Quốc ca: {nationalAnthemUrl && nationalLoadState === 'ready' ? 'Sẵn sàng' : nationalAnthemUrl ? 'Đang tải' : 'Chưa cài'}</div>
+              <div className={`rounded-xl px-3 py-3 text-xs font-bold ${teamSongUrl && teamLoadState === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'}`}>Đội ca: {teamSongUrl && teamLoadState === 'ready' ? 'Sẵn sàng' : teamSongUrl ? 'Đang tải' : 'Chưa cài'}</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
