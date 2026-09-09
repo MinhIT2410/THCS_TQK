@@ -47,7 +47,9 @@ export default function FlagCeremonyPage() {
   const [nationalAnthemUrl, setNationalAnthemUrl] = useState('');
   const [teamSongUrl, setTeamSongUrl] = useState('');
   const [saluteCommand, setSaluteCommand] = useState('Chào cờ, chào!');
+  const [saluteAudioUrl, setSaluteAudioUrl] = useState('');
   const [readinessMotto, setReadinessMotto] = useState('Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!');
+  const [readinessAudioUrl, setReadinessAudioUrl] = useState('');
   const [mediaPhase, setMediaPhase] = useState<MediaPhase>('idle');
   const [audioReady, setAudioReady] = useState(false);
   const [mediaBlocked, setMediaBlocked] = useState(false);
@@ -59,8 +61,10 @@ export default function FlagCeremonyPage() {
   const [teamCached, setTeamCached] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
   const nationalRef = useRef<HTMLVideoElement | null>(null);
   const teamRef = useRef<HTMLVideoElement | null>(null);
+  const readinessAudioRef = useRef<HTMLAudioElement | null>(null);
   const startedSignalRef = useRef<string | null>(null);
 
   useEffect(
@@ -83,7 +87,9 @@ export default function FlagCeremonyPage() {
         setNationalAnthemUrl(campaign.national_anthem_video_url || '');
         setTeamSongUrl(campaign.team_song_video_url || '');
         setSaluteCommand(campaign.ceremony_salute_command || 'Chào cờ, chào!');
+        setSaluteAudioUrl(campaign.ceremony_salute_audio_url || '');
         setReadinessMotto(campaign.ceremony_readiness_motto || 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!');
+        setReadinessAudioUrl(campaign.ceremony_readiness_audio_url || '');
       })
       .catch((err) => console.error('Không thể tải video nghi lễ:', err));
     return () => {
@@ -219,7 +225,7 @@ export default function FlagCeremonyPage() {
 
   const view: CeremonyView = !signal ? 'waiting' : countdown && countdown > 0 ? 'countdown' : 'salute';
 
-  const playElement = async (el: HTMLVideoElement | null) => {
+  const playElement = async (el: HTMLMediaElement | null) => {
     if (!el) return false;
     try {
       el.currentTime = 0;
@@ -236,7 +242,7 @@ export default function FlagCeremonyPage() {
   };
 
   const startMediaSequence = () => {
-    if (saluteCommand.trim()) {
+    if (saluteCommand.trim() || saluteAudioUrl) {
       setMediaPhase('command');
       return;
     }
@@ -248,7 +254,7 @@ export default function FlagCeremonyPage() {
       setMediaPhase('team');
       return;
     }
-    if (readinessMotto.trim()) {
+    if (readinessMotto.trim() || readinessAudioUrl) {
       setMediaPhase('motto');
       return;
     }
@@ -260,18 +266,24 @@ export default function FlagCeremonyPage() {
     if (startedSignalRef.current === signal.id) return;
     startedSignalRef.current = signal.id;
     startMediaSequence();
-  }, [view, signal?.id, saluteCommand, nationalAnthemUrl, teamSongUrl, readinessMotto]);
+  }, [view, signal?.id, saluteCommand, saluteAudioUrl, nationalAnthemUrl, teamSongUrl, readinessMotto, readinessAudioUrl]);
+
+  const advanceAfterCommand = () => {
+    if (nationalAnthemUrl) setMediaPhase('national');
+    else if (teamSongUrl) setMediaPhase('team');
+    else if (readinessMotto.trim() || readinessAudioUrl) setMediaPhase('motto');
+    else setMediaPhase('done');
+  };
 
   useEffect(() => {
     if (view !== 'salute' || mediaPhase !== 'command') return;
-    const timer = window.setTimeout(() => {
-      if (nationalAnthemUrl) setMediaPhase('national');
-      else if (teamSongUrl) setMediaPhase('team');
-      else if (readinessMotto.trim()) setMediaPhase('motto');
-      else setMediaPhase('done');
-    }, 2600);
+    if (saluteAudioUrl) {
+      const timer = window.setTimeout(() => void playElement(saluteAudioRef.current), 50);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(advanceAfterCommand, 2600);
     return () => window.clearTimeout(timer);
-  }, [view, mediaPhase, nationalAnthemUrl, teamSongUrl, readinessMotto]);
+  }, [view, mediaPhase, saluteAudioUrl, nationalAnthemUrl, teamSongUrl, readinessMotto, readinessAudioUrl]);
 
   useEffect(() => {
     if (view !== 'salute') return;
@@ -286,19 +298,32 @@ export default function FlagCeremonyPage() {
 
   const handleNationalEnded = () => {
     if (teamSongUrl) setMediaPhase('team');
-    else if (readinessMotto.trim()) setMediaPhase('motto');
+    else if (readinessMotto.trim() || readinessAudioUrl) setMediaPhase('motto');
     else setMediaPhase('done');
   };
 
   const handleTeamEnded = () => {
-    if (readinessMotto.trim()) setMediaPhase('motto');
+    if (readinessMotto.trim() || readinessAudioUrl) setMediaPhase('motto');
     else setMediaPhase('done');
   };
 
+  useEffect(() => {
+    if (view !== 'salute' || mediaPhase !== 'motto') return;
+    if (readinessAudioUrl) {
+      const timer = window.setTimeout(() => void playElement(readinessAudioRef.current), 50);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(() => setMediaPhase('done'), 4500);
+    return () => window.clearTimeout(timer);
+  }, [view, mediaPhase, readinessAudioUrl]);
+
   const prepareAudio = async () => {
-    const elements = [nationalAnthemUrl ? nationalRef.current : null, teamSongUrl ? teamRef.current : null].filter(
-      Boolean,
-    ) as HTMLVideoElement[];
+    const elements = [
+      saluteAudioUrl ? saluteAudioRef.current : null,
+      nationalAnthemUrl ? nationalRef.current : null,
+      teamSongUrl ? teamRef.current : null,
+      readinessAudioUrl ? readinessAudioRef.current : null,
+    ].filter(Boolean) as HTMLMediaElement[];
 
     try {
       for (const el of elements) {
@@ -320,8 +345,10 @@ export default function FlagCeremonyPage() {
 
   const retryCurrentMedia = () => {
     setAudioReady(true);
-    if (mediaPhase === 'national') void playElement(nationalRef.current);
+    if (mediaPhase === 'command') void playElement(saluteAudioRef.current);
+    else if (mediaPhase === 'national') void playElement(nationalRef.current);
     else if (mediaPhase === 'team') void playElement(teamRef.current);
+    else if (mediaPhase === 'motto') void playElement(readinessAudioRef.current);
   };
 
   const requestFullscreen = async () => {
@@ -378,7 +405,7 @@ export default function FlagCeremonyPage() {
     }
   };
 
-  const hasCeremonyMedia = Boolean(nationalAnthemUrl || teamSongUrl);
+  const hasCeremonyMedia = Boolean(saluteAudioUrl || nationalAnthemUrl || teamSongUrl || readinessAudioUrl);
   const allConfiguredMediaReady =
     (!nationalAnthemUrl || nationalLoadState === 'ready') &&
     (!teamSongUrl || teamLoadState === 'ready');
@@ -389,6 +416,8 @@ export default function FlagCeremonyPage() {
 
   return (
     <>
+      <audio ref={saluteAudioRef} src={saluteAudioUrl} preload="auto" onEnded={advanceAfterCommand} className="hidden" />
+      <audio ref={readinessAudioRef} src={readinessAudioUrl} preload="auto" onEnded={() => setMediaPhase('done')} className="hidden" />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 pb-20">
         <div
           className={`overflow-hidden rounded-3xl border text-white shadow-xl ${
@@ -800,12 +829,13 @@ export default function FlagCeremonyPage() {
           )}
 
           {view === 'salute' && mediaPhase === 'command' && (
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+            <div className="relative h-full w-full overflow-hidden">
               <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
-              <div className="absolute inset-0 bg-black/10" />
-              <div className="relative z-10 px-6 text-center">
-                <div className="text-5xl font-black tracking-tight text-white drop-shadow sm:text-8xl">{saluteCommand}</div>
-              </div>
+              {saluteCommand.trim() && (
+                <div className="absolute inset-x-0 bottom-0 z-10 bg-black/45 px-6 py-5 text-center backdrop-blur-sm">
+                  <div className="text-2xl font-black tracking-tight text-white sm:text-4xl">{saluteCommand}</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -844,12 +874,13 @@ export default function FlagCeremonyPage() {
           )}
 
           {view === 'salute' && mediaPhase === 'motto' && (
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+            <div className="relative h-full w-full overflow-hidden">
               <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
-              <div className="absolute inset-0 bg-black/10" />
-              <div className="relative z-10 max-w-6xl px-8 text-center">
-                <div className="text-4xl font-black leading-tight text-white drop-shadow sm:text-6xl lg:text-7xl">{readinessMotto}</div>
-              </div>
+              {readinessMotto.trim() && (
+                <div className="absolute inset-x-0 bottom-0 z-10 bg-black/45 px-6 py-5 text-center backdrop-blur-sm">
+                  <div className="mx-auto max-w-6xl text-xl font-black leading-snug text-white sm:text-3xl">{readinessMotto}</div>
+                </div>
+              )}
             </div>
           )}
 

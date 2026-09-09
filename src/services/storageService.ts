@@ -156,6 +156,55 @@ export async function uploadVideo(file: File, folder: string = 'ceremony-videos'
   return data.publicUrl;
 }
 
+
+/**
+ * Kiểm tra file âm thanh nghi lễ hợp lệ.
+ * Cho phép MP3/M4A/WAV/OGG, tối đa 20MB.
+ */
+export function validateAudioFile(file: File): string | null {
+  const allowedTypes = [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/ogg',
+  ];
+  if (!allowedTypes.includes(file.type)) {
+    return 'Định dạng âm thanh không hợp lệ. Chỉ chấp nhận MP3, M4A, WAV hoặc OGG.';
+  }
+
+  const maxSizeInBytes = 20 * 1024 * 1024;
+  if (file.size > maxSizeInBytes) {
+    return 'Dung lượng âm thanh vượt quá 20MB.';
+  }
+
+  return null;
+}
+
+/** Upload âm thanh nghi lễ lên school-media và trả về public URL. */
+export async function uploadAudio(file: File, folder: string = 'ceremony-audio'): Promise<string> {
+  const validationError = validateAudioFile(file);
+  if (validationError) throw new Error(validationError);
+
+  const currentYear = new Date().getFullYear();
+  const safeName = getSafeFileName(file.name);
+  const path = `${folder}/${currentYear}/${safeName}`;
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { cacheControl: '86400', upsert: false });
+
+  if (error) {
+    throw new Error(`Tải âm thanh lên Supabase thất bại: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) throw new Error('Không thể lấy public URL cho âm thanh vừa tải lên.');
+  return data.publicUrl;
+}
+
 export const DOCUMENT_STORAGE_BUCKET = 'school-document';
 
 /**
@@ -331,6 +380,7 @@ export const storageService = {
   uploadImage,
   validateVideoFile,
   uploadVideo,
+  uploadAudio,
   deleteImageByUrl,
   validateDocumentFile,
   uploadDocument,

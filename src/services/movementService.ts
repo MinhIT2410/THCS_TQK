@@ -165,7 +165,9 @@ export const movementService = {
       national_anthem_video_url: data.national_anthem_video_url?.trim() || null,
       team_song_video_url: data.team_song_video_url?.trim() || null,
       ceremony_salute_command: data.ceremony_salute_command?.trim() || null,
+      ceremony_salute_audio_url: data.ceremony_salute_audio_url?.trim() || null,
       ceremony_readiness_motto: data.ceremony_readiness_motto?.trim() || null,
+      ceremony_readiness_audio_url: data.ceremony_readiness_audio_url?.trim() || null,
       campaign_type: data.campaign_type || 'theo_dot',
       start_date: data.start_date || null,
       end_date: data.end_date || null,
@@ -220,7 +222,9 @@ export const movementService = {
     if (data.national_anthem_video_url !== undefined) payload.national_anthem_video_url = data.national_anthem_video_url?.trim() || null;
     if (data.team_song_video_url !== undefined) payload.team_song_video_url = data.team_song_video_url?.trim() || null;
     if (data.ceremony_salute_command !== undefined) payload.ceremony_salute_command = data.ceremony_salute_command?.trim() || null;
+    if (data.ceremony_salute_audio_url !== undefined) payload.ceremony_salute_audio_url = data.ceremony_salute_audio_url?.trim() || null;
     if (data.ceremony_readiness_motto !== undefined) payload.ceremony_readiness_motto = data.ceremony_readiness_motto?.trim() || null;
+    if (data.ceremony_readiness_audio_url !== undefined) payload.ceremony_readiness_audio_url = data.ceremony_readiness_audio_url?.trim() || null;
     if (data.campaign_type !== undefined) payload.campaign_type = data.campaign_type;
     if (data.start_date !== undefined) payload.start_date = data.start_date || null;
     if (data.end_date !== undefined) payload.end_date = data.end_date || null;

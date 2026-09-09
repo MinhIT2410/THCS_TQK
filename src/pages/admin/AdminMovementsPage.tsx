@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Image as ImageIcon,
   Video,
+  Volume2,
   Archive,
   ShieldAlert
 } from 'lucide-react';
@@ -84,7 +85,9 @@ export default function AdminMovementsPage() {
     national_anthem_video_url: '',
     team_song_video_url: '',
     ceremony_salute_command: 'Chào cờ, chào!',
+    ceremony_salute_audio_url: '',
     ceremony_readiness_motto: 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
+    ceremony_readiness_audio_url: '',
     campaign_type: 'theo_dot' as CampaignType,
     start_date: '',
     end_date: '',
@@ -96,6 +99,7 @@ export default function AdminMovementsPage() {
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCeremonyVideo, setUploadingCeremonyVideo] = useState<'national' | 'team' | null>(null);
+  const [uploadingCeremonyAudio, setUploadingCeremonyAudio] = useState<'salute' | 'motto' | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Child Event Form State
@@ -169,7 +173,9 @@ export default function AdminMovementsPage() {
       national_anthem_video_url: '',
       team_song_video_url: '',
       ceremony_salute_command: 'Chào cờ, chào!',
+      ceremony_salute_audio_url: '',
       ceremony_readiness_motto: 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
+      ceremony_readiness_audio_url: '',
       campaign_type: 'theo_dot',
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0],
@@ -193,7 +199,9 @@ export default function AdminMovementsPage() {
       national_anthem_video_url: c.national_anthem_video_url || '',
       team_song_video_url: c.team_song_video_url || '',
       ceremony_salute_command: c.ceremony_salute_command || 'Chào cờ, chào!',
+      ceremony_salute_audio_url: c.ceremony_salute_audio_url || '',
       ceremony_readiness_motto: c.ceremony_readiness_motto || 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
+      ceremony_readiness_audio_url: c.ceremony_readiness_audio_url || '',
       campaign_type: c.campaign_type,
       start_date: c.start_date ? c.start_date.split('T')[0] : '',
       end_date: c.end_date ? c.end_date.split('T')[0] : '',
@@ -255,6 +263,30 @@ export default function AdminMovementsPage() {
     }
   };
 
+
+  const handleCeremonyAudioUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    kind: 'salute' | 'motto'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingCeremonyAudio(kind);
+      const url = await storageService.uploadAudio(file, 'ceremony-audio');
+      setFormData(prev => ({
+        ...prev,
+        [kind === 'salute' ? 'ceremony_salute_audio_url' : 'ceremony_readiness_audio_url']: url,
+      }));
+      showSuccess(kind === 'salute' ? 'Đã tải âm thanh khẩu lệnh mở đầu.' : 'Đã tải âm thanh khẩu hiệu Sẵn sàng.');
+    } catch (err: any) {
+      alert(err.message || 'Tải âm thanh lên thất bại');
+    } finally {
+      setUploadingCeremonyAudio(null);
+      e.target.value = '';
+    }
+  };
+
   // Save campaign
   const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,7 +306,9 @@ export default function AdminMovementsPage() {
         national_anthem_video_url: formData.national_anthem_video_url.trim() || null,
         team_song_video_url: formData.team_song_video_url.trim() || null,
         ceremony_salute_command: formData.ceremony_salute_command.trim() || null,
+        ceremony_salute_audio_url: formData.ceremony_salute_audio_url.trim() || null,
         ceremony_readiness_motto: formData.ceremony_readiness_motto.trim() || null,
+        ceremony_readiness_audio_url: formData.ceremony_readiness_audio_url.trim() || null,
         campaign_type: formData.campaign_type,
         start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
         end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -853,34 +887,80 @@ export default function AdminMovementsPage() {
                       <div>
                         <div className="text-xs font-extrabold text-blue-900 dark:text-blue-200">Video nghi lễ chào cờ</div>
                         <div className="mt-0.5 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
-                          Hai video sẽ được tải sẵn trên trang Sinh hoạt đầu tuần. Khi bắt đầu chào cờ, Quốc ca phát trước và Đội ca tự phát tiếp theo.
+                          Trình tự: khẩu lệnh mở đầu → Quốc ca → Đội ca → khẩu hiệu Sẵn sàng. Có thể tải cả video và file âm thanh trực tiếp trong CMS.
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Khẩu lệnh mở đầu</label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">1. Khẩu lệnh mở đầu</label>
                         <textarea
                           rows={2}
                           value={formData.ceremony_salute_command}
                           onChange={(e) => setFormData(prev => ({ ...prev, ceremony_salute_command: e.target.value }))}
                           placeholder="Chào cờ, chào!"
-                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                         />
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Hiển thị trước khi phát Quốc ca.</div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={formData.ceremony_salute_audio_url}
+                            onChange={(e) => setFormData(prev => ({ ...prev, ceremony_salute_audio_url: e.target.value }))}
+                            placeholder="URL âm thanh khẩu lệnh"
+                            className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                          />
+                          <label className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 cursor-pointer shrink-0 inline-flex items-center gap-1.5">
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>{uploadingCeremonyAudio === 'salute' ? 'Đang tải...' : 'Tải âm thanh'}</span>
+                            <input
+                              type="file"
+                              accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/ogg,.mp3,.m4a,.wav,.ogg"
+                              onChange={(e) => handleCeremonyAudioUpload(e, 'salute')}
+                              className="hidden"
+                              disabled={uploadingCeremonyAudio !== null}
+                            />
+                          </label>
+                        </div>
+                        {formData.ceremony_salute_audio_url && (
+                          <audio controls preload="metadata" src={formData.ceremony_salute_audio_url} className="h-9 w-full" />
+                        )}
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Âm thanh này phát trước Quốc ca. Nếu chưa có file, hệ thống vẫn dùng thời gian chờ mặc định.</div>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Khẩu hiệu kết thúc nghi lễ</label>
+                      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">4. Khẩu hiệu “Sẵn sàng!”</label>
                         <textarea
                           rows={2}
                           value={formData.ceremony_readiness_motto}
                           onChange={(e) => setFormData(prev => ({ ...prev, ceremony_readiness_motto: e.target.value }))}
                           placeholder="Vì Tổ quốc xã hội chủ nghĩa... Sẵn sàng!"
-                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
                         />
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Hiển thị sau khi Đội ca kết thúc.</div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={formData.ceremony_readiness_audio_url}
+                            onChange={(e) => setFormData(prev => ({ ...prev, ceremony_readiness_audio_url: e.target.value }))}
+                            placeholder="URL âm thanh khẩu hiệu"
+                            className="min-w-0 flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100"
+                          />
+                          <label className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 cursor-pointer shrink-0 inline-flex items-center gap-1.5">
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>{uploadingCeremonyAudio === 'motto' ? 'Đang tải...' : 'Tải âm thanh'}</span>
+                            <input
+                              type="file"
+                              accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav,audio/ogg,.mp3,.m4a,.wav,.ogg"
+                              onChange={(e) => handleCeremonyAudioUpload(e, 'motto')}
+                              className="hidden"
+                              disabled={uploadingCeremonyAudio !== null}
+                            />
+                          </label>
+                        </div>
+                        {formData.ceremony_readiness_audio_url && (
+                          <audio controls preload="metadata" src={formData.ceremony_readiness_audio_url} className="h-9 w-full" />
+                        )}
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Âm thanh này phát sau Đội ca; nền cờ vẫn giữ nguyên, chữ chỉ hiện nhỏ ở chân màn hình.</div>
                       </div>
                     </div>
 
