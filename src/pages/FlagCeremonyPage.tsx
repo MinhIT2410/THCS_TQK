@@ -17,7 +17,7 @@ import { CeremonyStartSignal, flagCeremonyService } from '../services/flagCeremo
 import { movementService } from '../services/movementService';
 
 type CeremonyView = 'waiting' | 'countdown' | 'salute';
-type MediaPhase = 'idle' | 'national' | 'team' | 'done';
+type MediaPhase = 'idle' | 'command' | 'national' | 'team' | 'motto' | 'done';
 type MediaLoadState = 'missing' | 'loading' | 'ready' | 'error';
 
 function VietnamFlagBackdrop({ className = '' }: { className?: string }) {
@@ -46,6 +46,8 @@ export default function FlagCeremonyPage() {
   const [error, setError] = useState<string | null>(null);
   const [nationalAnthemUrl, setNationalAnthemUrl] = useState('');
   const [teamSongUrl, setTeamSongUrl] = useState('');
+  const [saluteCommand, setSaluteCommand] = useState('Chào cờ, chào!');
+  const [readinessMotto, setReadinessMotto] = useState('Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!');
   const [mediaPhase, setMediaPhase] = useState<MediaPhase>('idle');
   const [audioReady, setAudioReady] = useState(false);
   const [mediaBlocked, setMediaBlocked] = useState(false);
@@ -80,6 +82,8 @@ export default function FlagCeremonyPage() {
         if (cancelled || !campaign) return;
         setNationalAnthemUrl(campaign.national_anthem_video_url || '');
         setTeamSongUrl(campaign.team_song_video_url || '');
+        setSaluteCommand(campaign.ceremony_salute_command || 'Chào cờ, chào!');
+        setReadinessMotto(campaign.ceremony_readiness_motto || 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!');
       })
       .catch((err) => console.error('Không thể tải video nghi lễ:', err));
     return () => {
@@ -232,12 +236,20 @@ export default function FlagCeremonyPage() {
   };
 
   const startMediaSequence = () => {
+    if (saluteCommand.trim()) {
+      setMediaPhase('command');
+      return;
+    }
     if (nationalAnthemUrl) {
       setMediaPhase('national');
       return;
     }
     if (teamSongUrl) {
       setMediaPhase('team');
+      return;
+    }
+    if (readinessMotto.trim()) {
+      setMediaPhase('motto');
       return;
     }
     setMediaPhase('done');
@@ -248,7 +260,18 @@ export default function FlagCeremonyPage() {
     if (startedSignalRef.current === signal.id) return;
     startedSignalRef.current = signal.id;
     startMediaSequence();
-  }, [view, signal?.id, nationalAnthemUrl, teamSongUrl]);
+  }, [view, signal?.id, saluteCommand, nationalAnthemUrl, teamSongUrl, readinessMotto]);
+
+  useEffect(() => {
+    if (view !== 'salute' || mediaPhase !== 'command') return;
+    const timer = window.setTimeout(() => {
+      if (nationalAnthemUrl) setMediaPhase('national');
+      else if (teamSongUrl) setMediaPhase('team');
+      else if (readinessMotto.trim()) setMediaPhase('motto');
+      else setMediaPhase('done');
+    }, 2600);
+    return () => window.clearTimeout(timer);
+  }, [view, mediaPhase, nationalAnthemUrl, teamSongUrl, readinessMotto]);
 
   useEffect(() => {
     if (view !== 'salute') return;
@@ -263,10 +286,14 @@ export default function FlagCeremonyPage() {
 
   const handleNationalEnded = () => {
     if (teamSongUrl) setMediaPhase('team');
+    else if (readinessMotto.trim()) setMediaPhase('motto');
     else setMediaPhase('done');
   };
 
-  const handleTeamEnded = () => setMediaPhase('done');
+  const handleTeamEnded = () => {
+    if (readinessMotto.trim()) setMediaPhase('motto');
+    else setMediaPhase('done');
+  };
 
   const prepareAudio = async () => {
     const elements = [nationalAnthemUrl ? nationalRef.current : null, teamSongUrl ? teamRef.current : null].filter(
@@ -546,6 +573,16 @@ export default function FlagCeremonyPage() {
               </div>
             )}
 
+            {view === 'salute' && mediaPhase === 'command' && canControl && (
+              <div className="w-full">
+                <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/30">
+                  <Flag className="h-14 w-14" />
+                </div>
+                <div className="mt-7 text-5xl sm:text-7xl font-black tracking-tight text-red-600">{saluteCommand}</div>
+                <div className="mt-4 text-base font-bold text-slate-500 dark:text-slate-300">Sau khẩu lệnh, Quốc ca sẽ tự phát.</div>
+              </div>
+            )}
+
             {nationalAnthemUrl && canControl && (
               <div className={view === 'salute' && mediaPhase === 'national' ? 'w-full' : 'hidden'}>
                 <div className="mb-4 text-sm font-extrabold uppercase tracking-[0.2em] text-red-600">
@@ -600,7 +637,16 @@ export default function FlagCeremonyPage() {
               </div>
             )}
 
-            {view === 'salute' && canControl && (mediaPhase === 'done' || (!hasCeremonyMedia && mediaPhase !== 'national' && mediaPhase !== 'team')) && (
+            {view === 'salute' && mediaPhase === 'motto' && canControl && (
+              <div className="w-full">
+                <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/30">
+                  <Flag className="h-14 w-14" />
+                </div>
+                <div className="mx-auto mt-7 max-w-3xl text-3xl sm:text-5xl font-black leading-tight text-red-600">{readinessMotto}</div>
+              </div>
+            )}
+
+            {view === 'salute' && canControl && (mediaPhase === 'done' || (!hasCeremonyMedia && !saluteCommand.trim() && !readinessMotto.trim() && mediaPhase !== 'national' && mediaPhase !== 'team')) && (
               <div>
                 <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/30">
                   <Flag className="h-14 w-14" />
@@ -753,6 +799,16 @@ export default function FlagCeremonyPage() {
             </div>
           )}
 
+          {view === 'salute' && mediaPhase === 'command' && (
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
+              <div className="absolute inset-0 bg-black/10" />
+              <div className="relative z-10 px-6 text-center">
+                <div className="text-5xl font-black tracking-tight text-white drop-shadow sm:text-8xl">{saluteCommand}</div>
+              </div>
+            </div>
+          )}
+
           {view === 'salute' && mediaPhase === 'national' && (
             <div className="relative h-full w-full bg-black">
               <video
@@ -787,7 +843,17 @@ export default function FlagCeremonyPage() {
             </div>
           )}
 
-          {view === 'salute' && (mediaPhase === 'done' || (!hasCeremonyMedia && mediaPhase !== 'national' && mediaPhase !== 'team')) && (
+          {view === 'salute' && mediaPhase === 'motto' && (
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
+              <div className="absolute inset-0 bg-black/10" />
+              <div className="relative z-10 max-w-6xl px-8 text-center">
+                <div className="text-4xl font-black leading-tight text-white drop-shadow sm:text-6xl lg:text-7xl">{readinessMotto}</div>
+              </div>
+            </div>
+          )}
+
+          {view === 'salute' && (mediaPhase === 'done' || (!hasCeremonyMedia && !saluteCommand.trim() && !readinessMotto.trim() && mediaPhase !== 'national' && mediaPhase !== 'team')) && (
             <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
               <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
               <div className="absolute inset-0 bg-black/10" />

@@ -83,6 +83,8 @@ export default function AdminMovementsPage() {
     cover_image_url: '',
     national_anthem_video_url: '',
     team_song_video_url: '',
+    ceremony_salute_command: 'Chào cờ, chào!',
+    ceremony_readiness_motto: 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
     campaign_type: 'theo_dot' as CampaignType,
     start_date: '',
     end_date: '',
@@ -166,6 +168,8 @@ export default function AdminMovementsPage() {
       cover_image_url: '',
       national_anthem_video_url: '',
       team_song_video_url: '',
+      ceremony_salute_command: 'Chào cờ, chào!',
+      ceremony_readiness_motto: 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
       campaign_type: 'theo_dot',
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0],
@@ -188,6 +192,8 @@ export default function AdminMovementsPage() {
       cover_image_url: c.cover_image_url || '',
       national_anthem_video_url: c.national_anthem_video_url || '',
       team_song_video_url: c.team_song_video_url || '',
+      ceremony_salute_command: c.ceremony_salute_command || 'Chào cờ, chào!',
+      ceremony_readiness_motto: c.ceremony_readiness_motto || 'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!',
       campaign_type: c.campaign_type,
       start_date: c.start_date ? c.start_date.split('T')[0] : '',
       end_date: c.end_date ? c.end_date.split('T')[0] : '',
@@ -267,6 +273,8 @@ export default function AdminMovementsPage() {
         cover_image_url: formData.cover_image_url.trim() || null,
         national_anthem_video_url: formData.national_anthem_video_url.trim() || null,
         team_song_video_url: formData.team_song_video_url.trim() || null,
+        ceremony_salute_command: formData.ceremony_salute_command.trim() || null,
+        ceremony_readiness_motto: formData.ceremony_readiness_motto.trim() || null,
         campaign_type: formData.campaign_type,
         start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
         end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
@@ -847,6 +855,32 @@ export default function AdminMovementsPage() {
                         <div className="mt-0.5 text-[11px] leading-relaxed text-blue-700/80 dark:text-blue-300/80">
                           Hai video sẽ được tải sẵn trên trang Sinh hoạt đầu tuần. Khi bắt đầu chào cờ, Quốc ca phát trước và Đội ca tự phát tiếp theo.
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Khẩu lệnh mở đầu</label>
+                        <textarea
+                          rows={2}
+                          value={formData.ceremony_salute_command}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ceremony_salute_command: e.target.value }))}
+                          placeholder="Chào cờ, chào!"
+                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                        />
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Hiển thị trước khi phát Quốc ca.</div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Khẩu hiệu kết thúc nghi lễ</label>
+                        <textarea
+                          rows={2}
+                          value={formData.ceremony_readiness_motto}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ceremony_readiness_motto: e.target.value }))}
+                          placeholder="Vì Tổ quốc xã hội chủ nghĩa... Sẵn sàng!"
+                          className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                        />
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Hiển thị sau khi Đội ca kết thúc.</div>
                       </div>
                     </div>
 

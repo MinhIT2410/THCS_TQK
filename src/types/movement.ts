@@ -20,6 +20,8 @@ export interface MovementCampaign {
   cover_image_url?: string | null;
   national_anthem_video_url?: string | null;
   team_song_video_url?: string | null;
+  ceremony_salute_command?: string | null;
+  ceremony_readiness_motto?: string | null;
   campaign_type: CampaignType;
   start_date?: string | null;
   end_date?: string | null;
