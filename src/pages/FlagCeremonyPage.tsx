@@ -680,13 +680,9 @@ export default function FlagCeremonyPage() {
                 <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/30">
                   <Flag className="h-14 w-14" />
                 </div>
-                <div className="mt-7 text-5xl sm:text-7xl font-black tracking-tight text-red-600">NGHIÊM!</div>
-                <div className="mt-5 text-3xl sm:text-5xl font-black text-slate-900 dark:text-white">
-                  CHÀO CỜ – CHÀO!
+                <div className="mx-auto max-w-3xl text-3xl sm:text-5xl font-black leading-tight text-slate-900 dark:text-white">
+                  Nghi lễ chào cờ hoàn tất, kính mời quý thầy cô và các em học sinh an tọa!
                 </div>
-                {mediaPhase === 'done' && hasCeremonyMedia && (
-                  <p className="mt-5 text-base font-bold text-emerald-600">Đã hoàn tất Quốc ca và Đội ca.</p>
-                )}
               </div>
             )}
           </section>
@@ -889,11 +885,9 @@ export default function FlagCeremonyPage() {
               <VietnamFlagBackdrop className="absolute inset-0 h-full w-full" />
               <div className="absolute inset-0 bg-black/10" />
               <div className="relative z-10 px-6 text-center">
-                <div className="text-5xl font-black tracking-tight text-white drop-shadow sm:text-7xl">NGHIÊM!</div>
-                <div className="mt-5 text-4xl font-black text-yellow-200 drop-shadow sm:text-6xl">CHÀO CỜ – CHÀO!</div>
-                {mediaPhase === 'done' && hasCeremonyMedia && (
-                  <p className="mt-6 text-base font-bold text-white/90 sm:text-lg">Đã hoàn tất Quốc ca và Đội ca.</p>
-                )}
+                <div className="mx-auto max-w-5xl rounded-3xl bg-black/35 px-8 py-7 text-3xl font-black leading-tight text-white drop-shadow-xl backdrop-blur-sm sm:text-5xl">
+                  Nghi lễ chào cờ hoàn tất, kính mời quý thầy cô và các em học sinh an tọa!
+                </div>
               </div>
             </div>
           )}
