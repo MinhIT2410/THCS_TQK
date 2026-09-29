@@ -1849,6 +1849,30 @@ export const competitionService = {
     return data;
   },
 
+  // --- AUTO CREATE COMPETITION WEEKS ---
+  async getAutoWeekConfig(academicYearId: string) {
+    const { data, error } = await supabase.rpc('get_competition_auto_week_config', {
+      p_academic_year_id: academicYearId,
+    });
+    if (error) {
+      console.error('Error getting auto week config:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  async saveAutoWeekConfig(academicYearId: string, isEnabled: boolean) {
+    const { data, error } = await supabase.rpc('save_competition_auto_week_config', {
+      p_academic_year_id: academicYearId,
+      p_is_enabled: isEnabled,
+    });
+    if (error) {
+      console.error('Error saving auto week config:', error);
+      throw error;
+    }
+    return data;
+  },
+
   // --- COMPETITION COMMENT TEMPLATES ---
   async getCommentTemplates(commentType?: string, search?: string): Promise<CompetitionCommentTemplate[]> {
     let query = supabase

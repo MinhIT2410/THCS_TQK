@@ -430,6 +430,14 @@ export interface CompetitionAutoPublishConfig {
   next_publish_at?: string | null;
 }
 
+export interface CompetitionAutoWeekConfig {
+  academic_year_id: string;
+  is_enabled: boolean;
+  last_week_created_at?: string | null;
+  next_week_starts_on?: string | null;
+  next_week_ends_on?: string | null;
+}
+
 export interface WeeklyReportRuleStat {
   rule_id: string;
   rule_name: string;

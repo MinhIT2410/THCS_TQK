@@ -36,6 +36,7 @@ import {
   CompetitionWeekUnit, 
   WEEK_STATUS_LABELS,
   CompetitionAutoPublishConfig,
+  CompetitionAutoWeekConfig,
   CompetitionCommentTemplate,
 } from '../../../types/competition';
 import { formatCode } from './ProgramsAndRulesTab';
@@ -141,6 +142,8 @@ export default function ProgramAndWeeksTab() {
   const [customTimeInput, setCustomTimeInput] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [triggeringPublish, setTriggeringPublish] = useState(false);
+  const [autoWeekConfig, setAutoWeekConfig] = useState<CompetitionAutoWeekConfig | null>(null);
+  const [autoWeekEnabled, setAutoWeekEnabled] = useState(false);
 
   const handleToggleScheduleTime = (timeStr: string) => {
     if (scheduleTimes.includes(timeStr)) {
@@ -181,15 +184,22 @@ export default function ProgramAndWeeksTab() {
 
     try {
       setScheduleSaving(true);
-      const res = await competitionService.saveAutoPublishConfig(
-        selectedYearId,
-        scheduleEnabled,
-        scheduleTimes
-      );
-      if (res?.config) {
-        setAutoPublishConfig(res.config);
+      const [publishRes, weekRes] = await Promise.all([
+        competitionService.saveAutoPublishConfig(selectedYearId, scheduleEnabled, scheduleTimes),
+        competitionService.saveAutoWeekConfig(selectedYearId, autoWeekEnabled),
+      ]);
+      if (publishRes?.config) {
+        setAutoPublishConfig(publishRes.config);
       }
-      setMessage({ type: 'success', text: res.message || 'Đã lưu cấu hình tự động công bố!' });
+      const freshWeekConfig = await competitionService.getAutoWeekConfig(selectedYearId);
+      setAutoWeekConfig(freshWeekConfig);
+      setAutoWeekEnabled(Boolean(freshWeekConfig?.is_enabled));
+      setMessage({
+        type: 'success',
+        text: weekRes?.created_now > 0
+          ? 'Đã lưu cấu hình và tự động tạo tuần thi đua hiện tại.'
+          : (publishRes.message || 'Đã lưu cấu hình tự động thi đua!')
+      });
       setIsScheduleModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi lưu cấu hình tự động công bố.');
@@ -311,6 +321,14 @@ export default function ProgramAndWeeksTab() {
           }
         }).catch(err => {
           console.error('Error loading auto publish config:', err);
+        });
+        competitionService.getAutoWeekConfig(selectedYearId).then(cfg => {
+          setAutoWeekConfig(cfg);
+          setAutoWeekEnabled(Boolean(cfg?.is_enabled));
+        }).catch(err => {
+          console.error('Error loading auto week config:', err);
+          setAutoWeekConfig(null);
+          setAutoWeekEnabled(false);
         });
 
         // Get all programs
@@ -791,6 +809,7 @@ export default function ProgramAndWeeksTab() {
                 setScheduleEnabled(autoPublishConfig.is_enabled);
                 setScheduleTimes(autoPublishConfig.publish_times?.length > 0 ? autoPublishConfig.publish_times : ['06:00', '12:00', '18:00']);
               }
+              setAutoWeekEnabled(Boolean(autoWeekConfig?.is_enabled));
               setIsScheduleModalOpen(true);
             }}
             className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
@@ -1500,7 +1519,7 @@ export default function ProgramAndWeeksTab() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Cài đặt giờ công bố bảng xếp hạng
+                    Cài đặt tự động thi đua
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Năm học: <span className="font-semibold text-slate-700 dark:text-slate-300">{academicYears.find(y => y.id === selectedYearId)?.name || 'Hiện tại'}</span>
@@ -1513,6 +1532,43 @@ export default function ProgramAndWeeksTab() {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Auto-create competition weeks */}
+            <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <label htmlFor="auto-week-toggle" className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
+                    Tự động tạo tuần thi đua
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Tự mở tuần theo chu kỳ Thứ Hai → Chủ Nhật cho năm học hiện hành. Nếu tuần đã tồn tại, hệ thống sẽ không tạo trùng.
+                  </p>
+                </div>
+                <input
+                  id="auto-week-toggle"
+                  type="checkbox"
+                  checked={autoWeekEnabled}
+                  onChange={e => setAutoWeekEnabled(e.target.checked)}
+                  className="w-5 h-5 accent-blue-600 rounded-lg cursor-pointer shrink-0"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-xl bg-white/80 dark:bg-slate-900/50 border border-blue-100 dark:border-blue-900/50 px-3 py-2">
+                  <span className="text-slate-500 dark:text-slate-400">Tuần kế tiếp:</span>
+                  <div className="font-bold text-slate-900 dark:text-white mt-0.5">
+                    {autoWeekConfig?.next_week_starts_on && autoWeekConfig?.next_week_ends_on
+                      ? `${formatDateDisplay(autoWeekConfig.next_week_starts_on)} → ${formatDateDisplay(autoWeekConfig.next_week_ends_on)}`
+                      : '---'}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-white/80 dark:bg-slate-900/50 border border-blue-100 dark:border-blue-900/50 px-3 py-2">
+                  <span className="text-slate-500 dark:text-slate-400">Lần tự tạo gần nhất:</span>
+                  <div className="font-bold text-slate-900 dark:text-white mt-0.5">
+                    {formatDateTimeDisplay(autoWeekConfig?.last_week_created_at)}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Toggle auto-publish */}
