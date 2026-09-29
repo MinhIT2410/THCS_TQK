@@ -23,6 +23,8 @@ type CeremonyView = 'waiting' | 'countdown' | 'salute';
 type MediaPhase = 'idle' | 'command' | 'national' | 'team' | 'motto' | 'done';
 type MediaLoadState = 'missing' | 'loading' | 'ready' | 'error';
 
+const COMPLETED_SIGNAL_KEY = 'tqk_flag_ceremony_completed_signal_v1';
+
 function VietnamFlagBackdrop({ className = '' }: { className?: string }) {
   return (
     <svg
@@ -79,6 +81,17 @@ export default function FlagCeremonyPage() {
   useEffect(
     () =>
       flagCeremonyService.subscribe((next) => {
+        try {
+          if (localStorage.getItem(COMPLETED_SIGNAL_KEY) === next.id) {
+            setSignal(null);
+            setMediaPhase('idle');
+            setMediaBlocked(false);
+            return;
+          }
+        } catch {
+          // localStorage may be unavailable in private/restricted browser contexts.
+        }
+
         setSignal((current) => (current?.id === next.id ? current : next));
         setMediaPhase('idle');
         setMediaBlocked(false);
@@ -342,6 +355,21 @@ export default function FlagCeremonyPage() {
     const timer = window.setTimeout(() => setMediaPhase('done'), 4500);
     return () => window.clearTimeout(timer);
   }, [view, mediaPhase, readinessAudioUrl]);
+
+  useEffect(() => {
+    if (!signal || mediaPhase !== 'done') return;
+
+    const signalId = signal.id;
+    try {
+      localStorage.setItem(COMPLETED_SIGNAL_KEY, signalId);
+    } catch {
+      // Ignore storage failures; the server-side completion below is still authoritative.
+    }
+
+    void flagCeremonyService.completeCeremony().catch((err) => {
+      console.warn('Không thể đánh dấu nghi lễ đã hoàn tất:', err);
+    });
+  }, [signal, mediaPhase]);
 
   const prepareAudio = async () => {
     const elements = [

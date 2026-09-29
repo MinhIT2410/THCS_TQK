@@ -80,7 +80,7 @@ function setLocalSchedules(schedules: FlagCeremonySchedule[]) {
 }
 
 function stateToSignal(state: FlagCeremonyState): CeremonyStartSignal | null {
-  if (!state.starts_at || state.phase === 'idle' || state.phase === 'waiting') return null;
+  if (!state.starts_at || state.phase === 'idle' || state.phase === 'waiting' || state.phase === 'done') return null;
   return {
     id: `${state.id}:${state.updated_at}`,
     startsAt: state.starts_at,
@@ -147,6 +147,25 @@ export const flagCeremonyService = {
     const signal = stateToSignal(state);
     if (!signal) throw new Error('Không tạo được tín hiệu chào cờ.');
     return signal;
+  },
+
+  async completeCeremony(): Promise<void> {
+    if (!isSupabaseConfigured) {
+      const current = getLocalState();
+      if (current.phase === 'done' || current.phase === 'idle' || current.phase === 'waiting') return;
+      setLocalState({
+        ...current,
+        phase: 'done',
+        starts_at: null,
+        message: 'Nghi lễ chào cờ đã hoàn tất.',
+        updated_at: new Date().toISOString(),
+        updated_by: null,
+      });
+      return;
+    }
+
+    const { error } = await supabase.rpc('complete_flag_ceremony');
+    if (error) throw error;
   },
 
   subscribe(callback: (signal: CeremonyStartSignal) => void) {
