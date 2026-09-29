@@ -843,6 +843,35 @@ export const competitionService = {
     return data;
   },
 
+  async updateWeek(weekId: string, payload: {
+    week_number: number;
+    name: string;
+    starts_on: string;
+    ends_on: string;
+  }) {
+    if (!payload.name.trim()) throw new Error('Tên tuần không được để trống.');
+    if (payload.week_number < 1) throw new Error('Số tuần phải lớn hơn 0.');
+    if (payload.starts_on > payload.ends_on) throw new Error('Ngày kết thúc phải từ ngày bắt đầu trở đi.');
+
+    const { data, error } = await supabase
+      .from('competition_weeks')
+      .update({
+        week_number: payload.week_number,
+        name: payload.name.trim(),
+        starts_on: payload.starts_on,
+        ends_on: payload.ends_on,
+      })
+      .eq('id', weekId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating competition week:', error);
+      throw error;
+    }
+    return data as CompetitionWeek;
+  },
+
   async lockWeek(weekId: string) {
     const { data, error } = await supabase.rpc('lock_competition_week', {
       p_week_id: weekId,

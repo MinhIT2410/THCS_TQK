@@ -99,6 +99,15 @@ export default function ProgramAndWeeksTab() {
     default_starting_points: 100,
   });
 
+  // Edit Week Modal State
+  const [isEditWeekModalOpen, setIsEditWeekModalOpen] = useState(false);
+  const [editWeekForm, setEditWeekForm] = useState({
+    week_number: 1,
+    name: '',
+    starts_on: '',
+    ends_on: '',
+  });
+
   // Adjustment Modal State
   const [isAdjModalOpen, setIsAdjModalOpen] = useState(false);
   const [selectedUnitForAdj, setSelectedUnitForAdj] = useState<CompetitionWeekUnit | null>(null);
@@ -511,6 +520,51 @@ export default function ProgramAndWeeksTab() {
     }
   };
 
+  const openEditWeekModal = () => {
+    if (!currentWeek) return;
+    setEditWeekForm({
+      week_number: currentWeek.week_number,
+      name: currentWeek.name,
+      starts_on: currentWeek.starts_on.split('T')[0],
+      ends_on: currentWeek.ends_on.split('T')[0],
+    });
+    setIsEditWeekModalOpen(true);
+  };
+
+  const handleEditWeekSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentWeek) return;
+    if (editWeekForm.starts_on > editWeekForm.ends_on) {
+      setMessage({ type: 'error', text: 'Ngày kết thúc phải từ ngày bắt đầu trở đi.' });
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setMessage(null);
+      await competitionService.updateWeek(currentWeek.id, editWeekForm);
+
+      const summary = await competitionService.getWeekSummary(currentWeek.id);
+      setCurrentWeek(summary.week);
+      setUnits(summary.units);
+
+      if (currentProgram) {
+        const weekList = await competitionService.getWeeks({
+          programId: currentProgram.id,
+          academicYearId: selectedYearId,
+        });
+        setWeeks(weekList);
+      }
+
+      setIsEditWeekModalOpen(false);
+      setMessage({ type: 'success', text: 'Đã cập nhật thông tin tuần thi đua.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Không thể cập nhật tuần thi đua.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLockWeek = async () => {
     if (!currentWeek) return;
     if (!window.confirm(`Khóa ${currentWeek.name}? Khi bị khóa, không thể ghi nhận thêm vi phạm trong tuần này.`)) return;
@@ -831,6 +885,18 @@ export default function ProgramAndWeeksTab() {
 
             {/* Action buttons group */}
             <div className="flex items-center gap-2 self-end md:self-auto w-full md:w-auto justify-end">
+              {/* Edit Week Button */}
+              {currentWeek && (
+                <button
+                  onClick={openEditWeekModal}
+                  disabled={actionLoading}
+                  className="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Chỉnh sửa tuần</span>
+                </button>
+              )}
+
               {/* 3. Lock Week Button */}
               {currentWeek && (
                 currentWeek.status === 'OPEN' ? (
@@ -1168,6 +1234,64 @@ export default function ProgramAndWeeksTab() {
                   className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-md shadow-red-600/20"
                 >
                   {actionLoading ? 'Đang khởi tạo...' : 'Mở tuần'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT WEEK */}
+      {isEditWeekModalOpen && currentWeek && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                <span>Chỉnh sửa tuần thi đua</span>
+              </h3>
+              <button onClick={() => setIsEditWeekModalOpen(false)} className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Chỉ sửa số tuần, tên và khoảng ngày. Điểm, vi phạm, nhận xét và trạng thái khóa/công bố của tuần được giữ nguyên.
+            </p>
+
+            <form onSubmit={handleEditWeekSubmit} className="space-y-4 text-xs font-medium">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Số tuần *</label>
+                  <input type="number" min={1} required value={editWeekForm.week_number}
+                    onChange={e => setEditWeekForm({ ...editWeekForm, week_number: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Tên hiển thị *</label>
+                  <input type="text" required value={editWeekForm.name}
+                    onChange={e => setEditWeekForm({ ...editWeekForm, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Từ ngày *</label>
+                  <input type="date" required value={editWeekForm.starts_on}
+                    onChange={e => setEditWeekForm({ ...editWeekForm, starts_on: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-bold mb-1">Đến ngày *</label>
+                  <input type="date" required value={editWeekForm.ends_on}
+                    onChange={e => setEditWeekForm({ ...editWeekForm, ends_on: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onClick={() => setIsEditWeekModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">Hủy</button>
+                <button type="submit" disabled={actionLoading} className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md">
+                  {actionLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>
