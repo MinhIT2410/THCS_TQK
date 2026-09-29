@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
+  Clock3,
   Flag,
+  Plus,
+  Trash2,
   Maximize2,
   Minimize2,
   Play,
@@ -13,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { isSupabaseConfigured } from '../services/supabaseClient';
-import { CeremonyStartSignal, flagCeremonyService } from '../services/flagCeremonyService';
+import { CeremonySession, CeremonyStartSignal, FlagCeremonySchedule, flagCeremonyService } from '../services/flagCeremonyService';
 import { movementService } from '../services/movementService';
 
 type CeremonyView = 'waiting' | 'countdown' | 'salute';
@@ -60,6 +63,12 @@ export default function FlagCeremonyPage() {
   const [nationalCached, setNationalCached] = useState(false);
   const [teamCached, setTeamCached] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [schedules, setSchedules] = useState<FlagCeremonySchedule[]>([]);
+  const [scheduleDay, setScheduleDay] = useState(1);
+  const [scheduleSession, setScheduleSession] = useState<CeremonySession>('morning');
+  const [scheduleTime, setScheduleTime] = useState('07:00');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
   const nationalRef = useRef<HTMLVideoElement | null>(null);
@@ -77,6 +86,23 @@ export default function FlagCeremonyPage() {
       }),
     [],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSchedules = () => {
+      flagCeremonyService.getSchedules().then((items) => {
+        if (!cancelled) setSchedules(items);
+      }).catch((err) => {
+        if (!cancelled) setScheduleError(err?.message || 'Không thể tải lịch tự động.');
+      });
+    };
+    loadSchedules();
+    const timer = window.setInterval(loadSchedules, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -405,6 +431,72 @@ export default function FlagCeremonyPage() {
     }
   };
 
+  const dayLabels: Record<number, string> = {
+    1: 'Thứ 2',
+    2: 'Thứ 3',
+    3: 'Thứ 4',
+    4: 'Thứ 5',
+    5: 'Thứ 6',
+    6: 'Thứ 7',
+    7: 'Chủ nhật',
+  };
+
+  const formatScheduleTime = (value: string) => value.slice(0, 5);
+
+  const nextAutomaticSchedule = useMemo(() => {
+    const enabled = schedules.filter((item) => item.enabled);
+    if (!enabled.length) return null;
+    const base = new Date(now);
+    let best: { schedule: FlagCeremonySchedule; at: Date } | null = null;
+    for (const item of enabled) {
+      const [hour, minute] = item.run_time.slice(0, 5).split(':').map(Number);
+      const candidate = new Date(base);
+      const jsTargetDay = item.day_of_week === 7 ? 0 : item.day_of_week;
+      const delta = (jsTargetDay - candidate.getDay() + 7) % 7;
+      candidate.setDate(candidate.getDate() + delta);
+      candidate.setHours(hour, minute, 0, 0);
+      if (candidate.getTime() <= base.getTime()) candidate.setDate(candidate.getDate() + 7);
+      if (!best || candidate.getTime() < best.at.getTime()) best = { schedule: item, at: candidate };
+    }
+    return best;
+  }, [schedules, now]);
+
+  const saveSchedule = async () => {
+    try {
+      setScheduleSaving(true);
+      setScheduleError(null);
+      const saved = await flagCeremonyService.saveSchedule({
+        day_of_week: scheduleDay,
+        session: scheduleSession,
+        run_time: scheduleTime,
+        enabled: true,
+      });
+      setSchedules((current) => [...current, saved].sort((a, b) => a.day_of_week - b.day_of_week || a.run_time.localeCompare(b.run_time)));
+    } catch (err: any) {
+      setScheduleError(err?.message || 'Không thể lưu mốc tự động.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const toggleSchedule = async (item: FlagCeremonySchedule) => {
+    try {
+      const updated = await flagCeremonyService.saveSchedule({ ...item, enabled: !item.enabled });
+      setSchedules((current) => current.map((row) => row.id === item.id ? updated : row));
+    } catch (err: any) {
+      setScheduleError(err?.message || 'Không thể cập nhật mốc tự động.');
+    }
+  };
+
+  const removeSchedule = async (id: string) => {
+    try {
+      await flagCeremonyService.deleteSchedule(id);
+      setSchedules((current) => current.filter((row) => row.id !== id));
+    } catch (err: any) {
+      setScheduleError(err?.message || 'Không thể xóa mốc tự động.');
+    }
+  };
+
   const hasCeremonyMedia = Boolean(saluteAudioUrl || nationalAnthemUrl || teamSongUrl || readinessAudioUrl);
   const allConfiguredMediaReady =
     (!nationalAnthemUrl || nationalLoadState === 'ready') &&
@@ -509,6 +601,34 @@ export default function FlagCeremonyPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {canControl && (
+          <section className="mt-6 rounded-3xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-900/50 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-black text-red-700 dark:text-red-300">
+                  <Clock3 className="h-5 w-5" /> TỰ ĐỘNG PHÁT
+                </div>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Cài các mốc giờ hệ thống tự phát. Tắt mốc nào thì mốc đó không chạy.</p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="text-xs font-bold text-slate-600">Thứ<select value={scheduleDay} onChange={(e) => setScheduleDay(Number(e.target.value))} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold dark:border-slate-700 dark:bg-slate-950">{Object.entries(dayLabels).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                <label className="text-xs font-bold text-slate-600">Buổi<select value={scheduleSession} onChange={(e) => setScheduleSession(e.target.value as CeremonySession)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold dark:border-slate-700 dark:bg-slate-950"><option value="morning">Sáng</option><option value="afternoon">Chiều</option></select></label>
+                <label className="text-xs font-bold text-slate-600">Giờ<input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-1 block rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold dark:border-slate-700 dark:bg-slate-950" /></label>
+                <button type="button" onClick={() => void saveSchedule()} disabled={scheduleSaving} className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50"><Plus className="h-4 w-4" />{scheduleSaving ? 'Đang lưu...' : 'Thêm mốc'}</button>
+              </div>
+            </div>
+            {scheduleError && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{scheduleError}</div>}
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+              {schedules.length === 0 ? <div className="px-4 py-4 text-sm text-slate-500">Chưa có mốc tự động nào.</div> : schedules.map((item) => (
+                <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+                  <div className="flex items-center gap-3"><div className="text-sm font-black text-slate-900 dark:text-white">{dayLabels[item.day_of_week]} · {item.session === 'morning' ? 'Sáng' : 'Chiều'}</div><div className="rounded-lg bg-slate-100 px-2.5 py-1 text-sm font-black dark:bg-slate-800">{formatScheduleTime(item.run_time)}</div></div>
+                  <div className="flex items-center gap-2"><button type="button" onClick={() => void toggleSchedule(item)} className={`rounded-full px-3 py-1.5 text-xs font-black ${item.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{item.enabled ? 'BẬT' : 'OFF'}</button><button type="button" onClick={() => void removeSchedule(item.id)} className="rounded-xl p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Xóa mốc"><Trash2 className="h-4 w-4" /></button></div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className={`mt-6 grid gap-6 ${canControl ? 'lg:grid-cols-[1fr_340px]' : 'grid-cols-1'}`}>
@@ -766,6 +886,16 @@ export default function FlagCeremonyPage() {
                 </button>
               </div>
             </aside>
+          )}
+
+          {!canControl && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900 dark:text-white"><Clock3 className="h-5 w-5 text-blue-600" /> Lịch tự động</div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800"><div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Giờ hiện tại</div><div className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{new Date(now).toLocaleTimeString('vi-VN')}</div></div>
+                <div className="rounded-2xl bg-blue-50 px-4 py-3 dark:bg-blue-950/30"><div className="text-[11px] font-bold uppercase tracking-wide text-blue-600">Tự động phát tiếp theo</div><div className="mt-1 text-2xl font-black text-blue-900 dark:text-blue-200">{nextAutomaticSchedule ? formatScheduleTime(nextAutomaticSchedule.schedule.run_time) : 'OFF'}</div>{nextAutomaticSchedule && <div className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">{dayLabels[nextAutomaticSchedule.schedule.day_of_week]} · {nextAutomaticSchedule.schedule.session === 'morning' ? 'Buổi sáng' : 'Buổi chiều'}</div>}</div>
+              </div>
+            </div>
           )}
 
           {!canControl && (
