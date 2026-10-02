@@ -7,11 +7,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { userCreationApi } from '../userCreationApi';
 import { parseExcelFile, validateImportRows } from './userImportParser';
 import { downloadImportTemplate } from './userImportTemplate';
-import { RawImportRow, ValidatedImportRow, ImportResult } from './userImportTypes';
+import { RawImportRow, ValidatedImportRow, ImportResult, UserImportMode } from './userImportTypes';
 import * as XLSX from 'xlsx';
 import { 
   X, Upload, FileSpreadsheet, Download, AlertTriangle, CheckCircle, 
-  RefreshCw, ChevronRight, Play, FileDown, ArrowLeft, Info
+  RefreshCw, ChevronRight, Play, FileDown, ArrowLeft, Info, Users, GraduationCap
 } from 'lucide-react';
 
 interface UserImportModalProps {
@@ -32,6 +32,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
   
   // Data states
   const [fileName, setFileName] = useState('');
+  const [importMode, setImportMode] = useState<UserImportMode>('STUDENT');
   const [validatedRows, setValidatedRows] = useState<ValidatedImportRow[]>([]);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   
@@ -134,7 +135,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
         return;
       }
 
-      const validated = validateImportRows(rawRows, classes, academicYears);
+      const validated = validateImportRows(rawRows, classes, academicYears, importMode);
       setValidatedRows(validated);
       setStep('preview');
     } catch (err: any) {
@@ -146,7 +147,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    downloadImportTemplate(classes, academicYears);
+    downloadImportTemplate(classes, academicYears, importMode);
   };
 
   const handleConfirmImport = async () => {
@@ -261,18 +262,73 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
           {/* STEP 1: UPLOAD FILE */}
           {step === 'upload' && (
             <div className="space-y-6">
+              {/* Import type selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setImportMode('STUDENT')}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    importMode === 'STUDENT'
+                      ? 'border-blue-400 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/20 ring-2 ring-blue-100 dark:ring-blue-950/40'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900/40'
+                  }`}
+                  id="btn-import-mode-student"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
+                      <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Học sinh</div>
+                      <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Mã học sinh + lớp + năm học</div>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setImportMode('STAFF')}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    importMode === 'STAFF'
+                      ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/20 ring-2 ring-emerald-100 dark:ring-emerald-950/40'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900/40'
+                  }`}
+                  id="btn-import-mode-staff"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Giáo viên / Cán bộ</div>
+                      <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Họ tên + Email + Vai trò</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
               {/* Info guidelines */}
               <div className="p-4 bg-blue-50/40 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex gap-3 text-xs leading-relaxed">
                 <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                 <div className="space-y-1.5 text-slate-600 dark:text-slate-400">
                   <h4 className="font-bold text-slate-900 dark:text-white">Quy tắc chuẩn bị dữ liệu:</h4>
-                  <ul className="list-disc list-inside space-y-1 font-medium">
-                    <li>Họ tên và Vai trò là thông tin bắt buộc.</li>
-                    <li>Mỗi lượt import tối đa là 100 tài khoản.</li>
-                    <li>Cán bộ, giáo viên và học sinh có Email sẽ nhận email mời kích hoạt tài khoản để tự thiết lập mật khẩu đăng nhập riêng.</li>
-                    <li>Học sinh chưa có email bắt buộc phải khai báo <strong className="text-blue-600 dark:text-blue-400">Mã học sinh (student_code)</strong>. Hệ thống sẽ tự tạo tài khoản kỹ thuật và cấp mật khẩu tạm thời hiển thị tại bước cuối cùng.</li>
-                    <li>Đối với học sinh, ID lớp học và ID năm học bắt buộc phải đúng chuẩn UUID (lấy trong danh sách ở sheet đính kèm file mẫu).</li>
-                  </ul>
+                  {importMode === 'STAFF' ? (
+                    <ul className="list-disc list-inside space-y-1 font-medium">
+                      <li>Mỗi dòng bắt buộc có <strong>Họ tên, Email và Vai trò</strong>.</li>
+                      <li>Giáo viên dùng vai trò <strong className="text-emerald-700 dark:text-emerald-400">TEACHER</strong>; cán bộ/nhân viên có thể dùng STAFF hoặc vai trò quản lý phù hợp.</li>
+                      <li>Không nhập Mã học sinh, Lớp học hoặc Năm học trong chế độ này.</li>
+                      <li>Không chấp nhận dòng có vai trò STUDENT để tránh nhập nhầm đối tượng.</li>
+                      <li>Mỗi lượt import tối đa 100 tài khoản.</li>
+                    </ul>
+                  ) : (
+                    <ul className="list-disc list-inside space-y-1 font-medium">
+                      <li>Họ tên và Vai trò STUDENT là thông tin bắt buộc.</li>
+                      <li>Học sinh chưa có Email bắt buộc phải có <strong className="text-blue-600 dark:text-blue-400">Mã học sinh (student_code)</strong>.</li>
+                      <li>Tên lớp và Năm học bắt buộc, hệ thống tự đối chiếu với dữ liệu hiện có.</li>
+                      <li>Không chấp nhận dòng giáo viên/cán bộ trong chế độ Học sinh.</li>
+                      <li>Mỗi lượt import tối đa 100 tài khoản.</li>
+                    </ul>
+                  )}
                 </div>
               </div>
 
@@ -291,7 +347,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">Chưa có file dữ liệu mẫu?</h4>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Tải file excel mẫu đầy đủ cấu trúc các trường học tập và chỉ dẫn UUID</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{importMode === 'STAFF' ? 'Tải mẫu riêng cho Giáo viên/Cán bộ' : 'Tải mẫu riêng cho Học sinh, kèm danh sách lớp và năm học'}</p>
                   </div>
                 </div>
                 <button
@@ -300,7 +356,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                   id="btn-download-import-template"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  <span>Tải file Excel mẫu</span>
+                  <span>{importMode === 'STAFF' ? 'Tải mẫu Giáo viên/Cán bộ' : 'Tải mẫu Học sinh'}</span>
                 </button>
               </div>
 
@@ -354,7 +410,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                     File: {fileName}
                   </h4>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
-                    Xem trước danh sách dữ liệu trước khi thực hiện ghi vào hệ thống
+                    {importMode === 'STAFF' ? 'Đang kiểm tra dữ liệu Giáo viên/Cán bộ trước khi tạo tài khoản' : 'Đang kiểm tra dữ liệu Học sinh trước khi tạo tài khoản'}
                   </p>
                 </div>
                 <div className="flex gap-2">

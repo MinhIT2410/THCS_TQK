@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type UserImportMode = 'STUDENT' | 'STAFF' | 'MIXED';
+
 export interface RawImportRow {
   full_name: string;
   student_code?: string;

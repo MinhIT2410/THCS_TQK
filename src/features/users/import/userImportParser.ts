@@ -4,7 +4,7 @@
  */
 
 import * as XLSX from 'xlsx';
-import { RawImportRow, ValidatedImportRow } from './userImportTypes';
+import { RawImportRow, UserImportMode, ValidatedImportRow } from './userImportTypes';
 
 const ALLOWED_ROLES = [
   'SUPER_ADMIN',
@@ -95,7 +95,8 @@ export const parseExcelFile = (file: File): Promise<RawImportRow[]> => {
 export const validateImportRows = (
   rows: RawImportRow[],
   classes: any[],
-  academicYears: any[]
+  academicYears: any[],
+  importMode: UserImportMode = 'MIXED'
 ): ValidatedImportRow[] => {
   const emailsInFile = new Set<string>();
   const studentCodesInFile = new Set<string>();
@@ -154,6 +155,14 @@ export const validateImportRows = (
     }
 
     const isStudent = validRoles.includes('STUDENT');
+
+    // Enforce the import mode selected in the UI. MIXED preserves the legacy behavior.
+    if (importMode === 'STUDENT' && !isStudent) {
+      errors.push('Chế độ hiện tại chỉ nhập Học sinh. Vai trò bắt buộc phải có STUDENT.');
+    }
+    if (importMode === 'STAFF' && isStudent) {
+      errors.push('Chế độ hiện tại chỉ nhập Giáo viên/Cán bộ, không nhận vai trò STUDENT.');
+    }
 
     // 3. Email-less check & Email checks
     if (!email) {
