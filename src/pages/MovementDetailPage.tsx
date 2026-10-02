@@ -25,6 +25,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import { movementService } from '../services/movementService';
+import ChiDoiCongressOnlineForm from '../components/activity/ChiDoiCongressOnlineForm';
 import {
   MovementCampaign,
   CAMPAIGN_TYPE_LABELS,
@@ -121,6 +122,8 @@ export default function MovementDetailPage() {
   }
 
   const progress = getProgressPercentage(campaign.start_date, campaign.end_date);
+  const normalizedTitle = campaign.title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  const isChiDoiCongress = normalizedTitle.includes('dai hoi chi doi');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900/60 pb-16">
@@ -254,6 +257,9 @@ export default function MovementDetailPage() {
             </div>
           </section>
         )}
+
+        {/* GVCN online submission for Đại hội Chi đội */}
+        {isChiDoiCongress && <ChiDoiCongressOnlineForm campaign={campaign} />}
 
         {/* Child Events Section */}
         <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-700/80 shadow-sm space-y-6">
