@@ -58,8 +58,10 @@ export default function PendingIncidentsTab() {
       setActionLoading(true);
       setAlert(null);
       await competitionService.approveIncident(incident.id);
+      // Cập nhật cục bộ thay vì tải lại toàn bộ danh sách.
+      // RPC đã xử lý DB; chỉ loại sự việc vừa duyệt khỏi danh sách chờ.
+      setIncidents(current => current.filter(item => item.id !== incident.id));
       setAlert({ type: 'success', text: `Đã duyệt sự việc "${incident.title}" thành công!` });
-      await fetchPendingIncidents();
     } catch (err: any) {
       console.error('Approve error:', err);
       setAlert({ type: 'error', text: err.message || 'Lỗi khi duyệt sự việc.' });
@@ -77,9 +79,11 @@ export default function PendingIncidentsTab() {
       setAlert(null);
       await competitionService.rejectIncident(rejectModalIncident.id, rejectionReason.trim());
       setAlert({ type: 'success', text: `Đã từ chối ghi nhận sự việc "${rejectModalIncident.title}".` });
+      // Từ chối thành công thì sự việc không còn thuộc danh sách PENDING.
+      // Không gọi fetchPendingIncidents() để tránh bật loading và nháy/reload toàn bảng.
+      setIncidents(current => current.filter(item => item.id !== rejectModalIncident.id));
       setRejectModalIncident(null);
       setRejectionReason('');
-      await fetchPendingIncidents();
     } catch (err: any) {
       console.error('Reject error:', err);
       setAlert({ type: 'error', text: err.message || 'Lỗi khi từ chối sự việc.' });
