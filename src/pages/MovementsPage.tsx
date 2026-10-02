@@ -159,14 +159,21 @@ export default function MovementsPage() {
     }
   };
 
-  const formatCampaignDate = (startDate?: string | null, endDate?: string | null) => {
-    if (!startDate) return 'Đang cập nhật';
-    const start = new Date(startDate);
-    const startStr = `${start.getDate().toString().padStart(2, '0')}/${(start.getMonth() + 1).toString().padStart(2, '0')}/${start.getFullYear()}`;
-    if (!endDate) return startStr;
-    const end = new Date(endDate);
-    const endStr = `${end.getDate().toString().padStart(2, '0')}/${(end.getMonth() + 1).toString().padStart(2, '0')}/${end.getFullYear()}`;
-    return `${startStr} – ${endStr}`;
+  const getCampaignDateLines = (startDate?: string | null, endDate?: string | null) => {
+    if (!startDate) return { start: 'Đang cập nhật', end: null as string | null };
+
+    const formatDate = (value: string) => {
+      const date = new Date(value);
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    };
+
+    const startStr = formatDate(startDate);
+    if (!endDate) return { start: startStr, end: null as string | null };
+
+    const endStr = formatDate(endDate);
+    if (endStr === startStr) return { start: startStr, end: null as string | null };
+
+    return { start: startStr, end: endStr };
   };
 
   const renderTimelineCard = (
@@ -176,16 +183,24 @@ export default function MovementsPage() {
   ) => {
     const isTop = position === 'top';
     return (
-      <div className="relative group w-full h-[175px] flex flex-col justify-between">
+      <div className="relative group w-full h-[190px] flex flex-col justify-between">
         <Link
           to={`/hoat-dong/${campaign.slug}`}
           className="block bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl p-3.5 shadow-sm hover:shadow-md transition-all text-center space-y-1.5 h-full flex flex-col justify-between overflow-hidden"
         >
           <div className="space-y-1 overflow-hidden">
             {/* Prominent Date / Year in Theme Color */}
-            <div className={`font-display font-black text-lg sm:text-xl tracking-tight ${theme.textColor} truncate`}>
-              {formatCampaignDate(campaign.start_date, campaign.end_date)}
-            </div>
+            {(() => {
+              const dateLines = getCampaignDateLines(campaign.start_date, campaign.end_date);
+              return (
+                <div className={`font-display font-black text-sm sm:text-base tracking-tight leading-tight ${theme.textColor}`}>
+                  <div className="whitespace-nowrap">{dateLines.start}</div>
+                  {dateLines.end && (
+                    <div className="whitespace-nowrap mt-0.5">→ {dateLines.end}</div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Campaign Title */}
             <h3 className="font-display font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-red-400 line-clamp-2 transition-colors leading-tight">
@@ -232,9 +247,17 @@ export default function MovementsPage() {
         >
           <div className="space-y-1 overflow-hidden">
             {/* Prominent Date / Year in Theme Color */}
-            <div className={`font-display font-black text-base sm:text-lg tracking-tight ${theme.textColor} truncate`}>
-              {formatCampaignDate(campaign.start_date, campaign.end_date)}
-            </div>
+            {(() => {
+              const dateLines = getCampaignDateLines(campaign.start_date, campaign.end_date);
+              return (
+                <div className={`font-display font-black text-sm sm:text-base tracking-tight leading-tight ${theme.textColor}`}>
+                  <div className="whitespace-nowrap">{dateLines.start}</div>
+                  {dateLines.end && (
+                    <div className="whitespace-nowrap mt-0.5">→ {dateLines.end}</div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Campaign Title */}
             <h3 className="font-display font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-red-400 line-clamp-2 transition-colors leading-tight">
@@ -486,7 +509,7 @@ export default function MovementsPage() {
                 }}
               >
                 {/* HÀNG CARD PHÍA TRÊN (Các card index chẵn: 0, 2, 4...) */}
-                <div className="relative h-[175px] w-full">
+                <div className="relative h-[190px] w-full">
                   {displayTimelineCampaigns.map((campaign, idx) => {
                     if (idx % 2 !== 0) return null;
                     const theme = COLOR_THEMES[idx % COLOR_THEMES.length];
@@ -522,7 +545,7 @@ export default function MovementsPage() {
                 </div>
 
                 {/* HÀNG CARD PHÍA DƯỚI (Các card index lẻ: 1, 3, 5...) */}
-                <div className="relative h-[175px] w-full">
+                <div className="relative h-[190px] w-full">
                   {displayTimelineCampaigns.map((campaign, idx) => {
                     if (idx % 2 === 0) return null;
                     const theme = COLOR_THEMES[idx % COLOR_THEMES.length];

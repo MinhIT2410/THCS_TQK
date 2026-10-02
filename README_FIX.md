@@ -1,17 +1,18 @@
-# Sửa trang Hoạt động - chỉ hiển thị dữ liệu thực tế
+# Timeline Hoạt động - hiển thị đầy đủ thời gian
 
-## Thay đổi
-- Xóa 8 hoạt động demo/clone 2024-2025 hard-code trong `MovementsPage.tsx`.
-- Timeline chỉ dùng dữ liệu đã xuất bản từ Supabase.
-- Không chèn dữ liệu mẫu để đủ 8 mốc.
-- Nếu chưa có hoạt động thực tế: **Hoạt động đang cập nhật**.
-- Nếu có ít hoạt động thực tế thì chỉ hiển thị đúng số hoạt động đó.
+- Giữ bản sửa trước: chỉ dùng hoạt động thực tế, không chèn demo/clone.
+- Bỏ dấu `...` ở ngày tháng.
+- Khoảng thời gian hiển thị 2 dòng, ví dụ:
+  `07/09/2026`
+  `→ 30/09/2026`
+- Hoạt động một ngày chỉ hiển thị một dòng.
+- Giảm cỡ chữ ngày và tăng nhẹ chiều cao card.
+- Áp dụng cả desktop và mobile.
 
-## File copy đè
+File copy đè:
 `src/pages/MovementsPage.tsx`
 
-## SQL
-Không cần chạy SQL/migration.
+Không cần SQL/migration.
 
-## Commit gợi ý
-`fix(activities): remove demo campaigns and show real data only`
+Commit:
+`fix(activities): show full timeline date ranges`
