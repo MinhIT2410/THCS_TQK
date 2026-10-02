@@ -79,122 +79,6 @@ const COLOR_THEMES = [
   }
 ];
 
-// Development / Preview 8-milestone placeholder items if real timeline data has fewer items
-const DEMO_PREVIEW_CAMPAIGN_ITEMS: MovementCampaign[] = [
-  {
-    id: 'demo-1',
-    title: 'Chương trình "Khởi động năm học mới 2024 - 2025"',
-    summary: 'Phát động phong trào thi đua học tập và rèn luyện Đội viên đầu năm học.',
-    campaign_type: 'cao_diem',
-    status: 'dang_dien_ra',
-    start_date: '2024-09-05',
-    end_date: '2024-09-30',
-    slug: 'khoi-dong-nam-hoc',
-    is_featured: false,
-    is_published: true,
-    display_order: 1,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-2',
-    title: 'Hội thu Kế hoạch nhỏ đợt 1',
-    summary: 'Quyên góp giấy vụn, vỏ lon gây quỹ học bổng "Thắp sáng giấc mơ thiếu nhi".',
-    campaign_type: 'cuoc_thi',
-    status: 'sap_dien_ra',
-    start_date: '2024-10-15',
-    end_date: '2024-10-25',
-    slug: 'ke-hoach-nho-dot-1',
-    is_featured: false,
-    is_published: true,
-    display_order: 2,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-3',
-    title: 'Thi đua Chào mừng Ngày Nhà giáo Việt Nam 20/11',
-    summary: 'Hội thi làm báo tường, hoa điểm tốt và văn nghệ tri ân thầy cô giáo.',
-    campaign_type: 'cao_diem',
-    status: 'sap_dien_ra',
-    start_date: '2024-11-01',
-    end_date: '2024-11-20',
-    slug: 'chao-mung-20-11',
-    is_featured: false,
-    is_published: true,
-    display_order: 3,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-4',
-    title: 'Hội khỏe Phù Đổng cấp Trường',
-    summary: 'Giải thi đấu các môn thể thao học sinh: bóng đá, cầu lông, cờ vua, kéo co.',
-    campaign_type: 'cuoc_thi',
-    status: 'sap_dien_ra',
-    start_date: '2024-12-10',
-    end_date: '2024-12-22',
-    slug: 'hoi-khoe-phu-dong',
-    is_featured: false,
-    is_published: true,
-    display_order: 4,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-5',
-    title: 'Chương trình "Xuân yêu thương - Tết sẻ chia"',
-    summary: 'Trao tặng quà Tết cho các bạn học sinh có hoàn cảnh khó khăn vươn lên.',
-    campaign_type: 'cao_diem',
-    status: 'sap_dien_ra',
-    start_date: '2025-01-10',
-    end_date: '2025-01-22',
-    slug: 'xuan-yeu-thuong-2025',
-    is_featured: false,
-    is_published: true,
-    display_order: 5,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-6',
-    title: 'Cuộc thi Sáng tạo Thanh thiếu niên Nhi đồng',
-    summary: 'Trưng bày và chấm giải các mô hình, sản phẩm sáng tạo KHKT của thiếu nhi.',
-    campaign_type: 'cuoc_thi',
-    status: 'sap_dien_ra',
-    start_date: '2025-02-15',
-    end_date: '2025-03-01',
-    slug: 'sang-tao-thanh-thieu-nien',
-    is_featured: false,
-    is_published: true,
-    display_order: 6,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-7',
-    title: 'Tháng Thanh niên & Kỷ niệm 94 năm Ngày thành lập Đoàn',
-    summary: 'Ngày hội "Tiến bước lên Đoàn", kết náp Đoàn viên mới và hội trại kỹ năng.',
-    campaign_type: 'cao_diem',
-    status: 'sap_dien_ra',
-    start_date: '2025-03-01',
-    end_date: '2025-03-26',
-    slug: 'thang-thanh-nien-2025',
-    is_featured: false,
-    is_published: true,
-    display_order: 7,
-    academic_year: '2024-2025',
-  },
-  {
-    id: 'demo-8',
-    title: 'Đại hội Cháu ngoan Bác Hồ & Tổng kết năm học',
-    summary: 'Tuyên dương các dũng sĩ Kế hoạch nhỏ, Cháu ngoan Bác Hồ xuất sắc toàn trường.',
-    campaign_type: 'cao_diem',
-    status: 'sap_dien_ra',
-    start_date: '2025-05-15',
-    end_date: '2025-05-25',
-    slug: 'dai-hoi-chau-ngoan-bac-ho',
-    is_featured: false,
-    is_published: true,
-    display_order: 8,
-    academic_year: '2024-2025',
-  },
-];
-
 export default function MovementsPage() {
   const [campaigns, setCampaigns] = useState<MovementCampaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,15 +113,8 @@ export default function MovementsPage() {
       });
   }, [campaigns]);
 
-  // For desktop preview: Ensure at least 8 items are displayed to match reference layout
-  const displayTimelineCampaigns = useMemo(() => {
-    if (timelineCampaigns.length >= 8) {
-      return timelineCampaigns;
-    }
-    const needed = 8 - timelineCampaigns.length;
-    const fillers = DEMO_PREVIEW_CAMPAIGN_ITEMS.slice(0, needed);
-    return [...timelineCampaigns, ...fillers];
-  }, [timelineCampaigns]);
+  // Chỉ hiển thị hoạt động thực tế từ Supabase, không chèn dữ liệu demo/clone.
+  const displayTimelineCampaigns = timelineCampaigns;
 
   // Calculations for Desktop Timeline SVG alignment
   const ITEM_WIDTH = 190;
@@ -458,7 +335,7 @@ export default function MovementsPage() {
           <div className="max-w-xl mx-auto border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl p-10 text-center bg-white/50 dark:bg-slate-900/50 space-y-2">
             <Flag className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto" />
             <p className="font-display text-sm font-bold text-slate-700 dark:text-slate-300">
-              Các hoạt động thường xuyên đang được cập nhật.
+              Hoạt động đang cập nhật
             </p>
           </div>
         )}
@@ -591,7 +468,7 @@ export default function MovementsPage() {
           <div className="max-w-xl mx-auto border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl p-10 text-center bg-white/50 dark:bg-slate-900/50 space-y-2">
             <Clock className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto" />
             <p className="font-display text-sm font-bold text-slate-700 dark:text-slate-300">
-              Chưa có hoạt động theo mốc thời gian.
+              Hoạt động đang cập nhật
             </p>
           </div>
         )}
