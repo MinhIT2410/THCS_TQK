@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase/client';
+import { optimizeImageForUpload, syncPathExtensionWithFile } from '../utils/imageOptimizer';
 
 const STORAGE_BUCKET = 'school-media';
 
@@ -59,15 +60,18 @@ export async function uploadImage(file: File, folder?: string): Promise<string> 
     throw new Error(validationError);
   }
 
+  const optimized = await optimizeImageForUpload(file);
+  const uploadFile = optimized.file;
+
   const currentYear = new Date().getFullYear();
   const folderPath = folder ? `${folder}/${currentYear}` : `uploads/${currentYear}`;
-  const safeName = getSafeFileName(file.name);
+  const safeName = getSafeFileName(uploadFile.name);
   const path = `${folderPath}/${safeName}`;
 
   try {
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, file, {
+      .upload(path, uploadFile, {
         cacheControl: '3600',
         upsert: false
       });
@@ -300,14 +304,16 @@ export async function uploadAlbumImage(file: File, albumId?: string): Promise<{
     throw new Error(validationError);
   }
 
+  const optimized = await optimizeImageForUpload(file);
+  const uploadFile = optimized.file;
   const folderPath = `albums/${albumId || 'temp'}`;
-  const safeName = getSafeFileName(file.name);
+  const safeName = getSafeFileName(uploadFile.name);
   const path = `${folderPath}/${safeName}`;
 
   try {
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, file, {
+      .upload(path, uploadFile, {
         cacheControl: '3600',
         upsert: false
       });
@@ -329,8 +335,8 @@ export async function uploadAlbumImage(file: File, albumId?: string): Promise<{
       url: data.publicUrl,
       path,
       fileName: file.name,
-      fileSize: file.size,
-      mimeType: file.type || 'image/jpeg',
+      fileSize: uploadFile.size,
+      mimeType: uploadFile.type || 'image/jpeg',
     };
   } catch (err: any) {
     console.error('Error during uploadAlbumImage:', err);
@@ -347,10 +353,14 @@ export async function uploadImageToExactPath(file: File, exactPath: string, opti
     throw new Error(validationError);
   }
 
+  const optimized = await optimizeImageForUpload(file);
+  const uploadFile = optimized.file;
+  const uploadPath = syncPathExtensionWithFile(exactPath, uploadFile);
+
   try {
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(exactPath, file, {
+      .upload(uploadPath, uploadFile, {
         cacheControl: '3600',
         upsert: options?.upsert ?? true
       });
@@ -362,7 +372,7 @@ export async function uploadImageToExactPath(file: File, exactPath: string, opti
 
     const { data } = supabase.storage
       .from(STORAGE_BUCKET)
-      .getPublicUrl(exactPath);
+      .getPublicUrl(uploadPath);
 
     if (!data || !data.publicUrl) {
       throw new Error('Không thể lấy public URL cho file vừa upload.');

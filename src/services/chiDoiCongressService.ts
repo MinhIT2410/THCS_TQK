@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase/client';
 import { ChiDoiCongressSubmission, HomeroomClassInfo } from '../types/chiDoiCongress';
+import { optimizeImageForUpload } from '../utils/imageOptimizer';
 
 const BUCKET = 'school-media';
 
@@ -53,8 +54,10 @@ export const chiDoiCongressService = {
       throw new Error('Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP.');
     }
     if (file.size > 8 * 1024 * 1024) throw new Error('Mỗi ảnh tối đa 8MB.');
-    const path = `dai-hoi-chi-doi/${userId}/${safeFileName(file.name)}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+    const optimized = await optimizeImageForUpload(file);
+    const uploadFile = optimized.file;
+    const path = `dai-hoi-chi-doi/${userId}/${safeFileName(uploadFile.name)}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, uploadFile, { upsert: false });
     if (error) throw error;
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     if (!data?.publicUrl) throw new Error('Không lấy được đường dẫn ảnh.');

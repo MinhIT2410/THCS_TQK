@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase/client';
 import { sortClassesNaturally, compareClassNames, removeVietnameseTones, parseClassParts } from '../utils/classSortUtils';
+import { optimizeImageForUpload } from '../utils/imageOptimizer';
 import {
   CompetitionProgram,
   CompetitionRule,
@@ -465,13 +466,17 @@ export const competitionService = {
 
   // --- UPLOAD EVIDENCE IMAGE ---
   async uploadEvidenceImage(file: File, folderPrefix = 'temp'): Promise<string> {
-    const ext = file.name.split('.').pop() || 'jpg';
+    const optimized = await optimizeImageForUpload(file);
+    const uploadFile = optimized.file;
+    const ext = uploadFile.type === 'image/webp'
+      ? 'webp'
+      : (uploadFile.name.split('.').pop() || 'jpg');
     const uuid = crypto.randomUUID();
     const filePath = `competition/incidents/${folderPrefix}/${uuid}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('school-media')
-      .upload(filePath, file, {
+      .upload(filePath, uploadFile, {
         cacheControl: '3600',
         upsert: false,
       });
