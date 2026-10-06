@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase/client';
 import { sortClassesNaturally, compareClassNames, removeVietnameseTones, parseClassParts } from '../utils/classSortUtils';
+import { optimizeImageForUpload } from '../utils/imageOptimizer';
 import {
   CompetitionProgram,
   CompetitionRule,
@@ -465,13 +466,17 @@ export const competitionService = {
 
   // --- UPLOAD EVIDENCE IMAGE ---
   async uploadEvidenceImage(file: File, folderPrefix = 'temp'): Promise<string> {
-    const ext = file.name.split('.').pop() || 'jpg';
+    const optimized = await optimizeImageForUpload(file);
+    const uploadFile = optimized.file;
+    const ext = uploadFile.type === 'image/webp'
+      ? 'webp'
+      : (uploadFile.name.split('.').pop() || 'jpg');
     const uuid = crypto.randomUUID();
     const filePath = `competition/incidents/${folderPrefix}/${uuid}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('school-media')
-      .upload(filePath, file, {
+      .upload(filePath, uploadFile, {
         cacheControl: '3600',
         upsert: false,
       });
@@ -1788,6 +1793,48 @@ export const competitionService = {
     return data || [];
   },
 
+
+  /**
+   * Return active homeroom class ids for the signed-in teacher.
+   * If academicYearId is omitted, the current/active academic year is resolved automatically.
+   * Used to scope competition reports for GVCN without granting school-wide report access.
+   */
+  async getMyActiveHomeroomClassIds(academicYearId?: string): Promise<string[]> {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) return [];
+
+      let yearId = academicYearId;
+      if (!yearId) {
+        const years = await this.getAcademicYears();
+        const currentYear = years.find((y: any) => y.is_current) || years.find((y: any) => y.is_active) || years[0];
+        yearId = currentYear?.id;
+      }
+
+      let query = supabase
+        .from('homeroom_assignments')
+        .select('class_id')
+        .eq('teacher_id', userId)
+        .eq('is_active', true);
+
+      if (yearId) {
+        query = query.eq('academic_year_id', yearId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error fetching active homeroom classes:', error);
+        return [];
+      }
+
+      return Array.from(new Set((data || []).map((row: any) => row.class_id).filter(Boolean)));
+    } catch (err) {
+      console.error('Error resolving active homeroom classes:', err);
+      return [];
+    }
+  },
+
   async searchAssignmentCandidates(params: {
     assignment_type: 'SUPERVISOR' | 'LIEN_DOI_COMMAND' | 'RED_STAR';
     search?: string;
@@ -1870,6 +1917,32 @@ export const competitionService = {
     });
     if (error) {
       console.error('Error saving auto week config:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  // --- AUTO LOCK COMPLETED COMPETITION WEEKS ---
+  async getAutoLockConfig(academicYearId: string) {
+    const { data, error } = await supabase.rpc('get_competition_auto_lock_config', {
+      p_academic_year_id: academicYearId,
+    });
+    if (error) {
+      console.error('Error getting auto lock config:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  async saveAutoLockConfig(academicYearId: string, isEnabled: boolean, lockIsodow: number, lockTime: string) {
+    const { data, error } = await supabase.rpc('save_competition_auto_lock_config', {
+      p_academic_year_id: academicYearId,
+      p_is_enabled: isEnabled,
+      p_lock_isodow: lockIsodow,
+      p_lock_time: lockTime,
+    });
+    if (error) {
+      console.error('Error saving auto lock config:', error);
       throw error;
     }
     return data;
