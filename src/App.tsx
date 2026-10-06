@@ -16,41 +16,138 @@ import { STORAGE_KEYS } from './config/storageKeys';
 import Layout from './pages/Layout';
 import HomePage from './pages/HomePage';
 
+const LAZY_RELOAD_KEY = '__tqk_lazy_chunk_reload__';
+
+function isLazyChunkLoadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /failed to fetch dynamically imported module|importing a module script failed|loading chunk|chunkloaderror|dynamically imported module/i.test(message);
+}
+
+/**
+ * Vercel deploys can invalidate an already-open tab's old hashed JS chunks.
+ * Retry safely by reloading the document once; never enter an infinite reload loop.
+ */
+function lazyWithReload<T extends React.ComponentType<any>>(
+  importer: () => Promise<{ default: T }>
+) {
+  return React.lazy(async () => {
+    try {
+      const module = await importer();
+      try {
+        sessionStorage.removeItem(LAZY_RELOAD_KEY);
+      } catch {
+        // Storage may be unavailable in restricted browsing modes; ignore safely.
+      }
+      return module;
+    } catch (error) {
+      let alreadyReloaded = false;
+      try {
+        alreadyReloaded = sessionStorage.getItem(LAZY_RELOAD_KEY) === '1';
+      } catch {
+        // If sessionStorage is unavailable, fall through to the error boundary.
+      }
+
+      if (isLazyChunkLoadError(error) && !alreadyReloaded) {
+        try {
+          sessionStorage.setItem(LAZY_RELOAD_KEY, '1');
+        } catch {
+          // Ignore; location.reload below is still safe.
+        }
+
+        window.location.reload();
+
+        // Keep Suspense pending while the browser reloads the fresh deployment.
+        return await new Promise<{ default: T }>(() => {});
+      }
+
+      throw error;
+    }
+  });
+}
+
+class RouteLoadErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('Route load failed:', error);
+  }
+
+  private handleReload = () => {
+    try {
+      sessionStorage.removeItem(LAZY_RELOAD_KEY);
+    } catch {
+      // Ignore storage errors.
+    }
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <h1 className="text-lg font-bold text-slate-900">Trang vừa được cập nhật</h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Trình duyệt chưa tải được phiên bản mới. Hãy tải lại trang để tiếp tục.
+            </p>
+            <button
+              type="button"
+              onClick={this.handleReload}
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-red-600 px-5 text-sm font-bold text-white hover:bg-red-700"
+            >
+              Tải lại trang
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Route-level code splitting:
 // Keep only the public shell + homepage in the initial bundle.
 // Heavy admin/report/Excel/PDF/chart code is downloaded only when that route is opened.
-const AboutPage = React.lazy(() => import('./pages/AboutPage'));
-const NewsPage = React.lazy(() => import('./pages/NewsPage'));
-const GalleryPage = React.lazy(() => import('./pages/GalleryPage'));
-const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage'));
-const ContactPage = React.lazy(() => import('./pages/ContactPage'));
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
-const AdminLayout = React.lazy(() => import('./layouts/admin/AdminLayout'));
-const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
-const AdminNewsPage = React.lazy(() => import('./pages/admin/AdminNewsPage'));
-const AdminDocumentsPage = React.lazy(() => import('./pages/admin/AdminDocumentsPage'));
-const AdminAlbumsPage = React.lazy(() => import('./pages/admin/AdminAlbumsPage'));
-const AdminCmsPage = React.lazy(() => import('./pages/admin/AdminCmsPage'));
-const AdminAboutPage = React.lazy(() => import('./pages/admin/AdminAboutPage'));
-const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
-const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
-const AdminMovementsPage = React.lazy(() => import('./pages/admin/AdminMovementsPage'));
-const NewsDetailPage = React.lazy(() => import('./pages/NewsDetailPage'));
-const AlbumDetailPage = React.lazy(() => import('./pages/AlbumDetailPage'));
-const AboutDetailPage = React.lazy(() => import('./pages/AboutDetailPage'));
-const MovementsPage = React.lazy(() => import('./pages/MovementsPage'));
-const MovementDetailPage = React.lazy(() => import('./pages/MovementDetailPage'));
-const FlagCeremonyPage = React.lazy(() => import('./pages/FlagCeremonyPage'));
-const CompetitionOverviewPage = React.lazy(() => import('./pages/CompetitionOverviewPage'));
-const PublicUnitCompetitionPage = React.lazy(() => import('./pages/PublicUnitCompetitionPage'));
-const StudentCompetitionPage = React.lazy(() => import('./pages/StudentCompetitionPage'));
-const PublicGoodDeedsPage = React.lazy(() => import('./pages/PublicGoodDeedsPage'));
-const PublicRewardShopPage = React.lazy(() => import('./pages/PublicRewardShopPage'));
-const RecordIncidentPage = React.lazy(() => import('./pages/RecordIncidentPage'));
-const CompetitionPendingPage = React.lazy(() => import('./pages/CompetitionPendingPage'));
-const CompetitionReportPage = React.lazy(() => import('./pages/CompetitionReportPage'));
-const AdminCompetitionPage = React.lazy(() => import('./pages/admin/AdminCompetitionPage'));
+const AboutPage = lazyWithReload(() => import('./pages/AboutPage'));
+const NewsPage = lazyWithReload(() => import('./pages/NewsPage'));
+const GalleryPage = lazyWithReload(() => import('./pages/GalleryPage'));
+const DocumentsPage = lazyWithReload(() => import('./pages/DocumentsPage'));
+const ContactPage = lazyWithReload(() => import('./pages/ContactPage'));
+const LoginPage = lazyWithReload(() => import('./pages/LoginPage'));
+const ResetPasswordPage = lazyWithReload(() => import('./pages/ResetPasswordPage'));
+const AdminLayout = lazyWithReload(() => import('./layouts/admin/AdminLayout'));
+const AdminDashboardPage = lazyWithReload(() => import('./pages/admin/AdminDashboardPage'));
+const AdminNewsPage = lazyWithReload(() => import('./pages/admin/AdminNewsPage'));
+const AdminDocumentsPage = lazyWithReload(() => import('./pages/admin/AdminDocumentsPage'));
+const AdminAlbumsPage = lazyWithReload(() => import('./pages/admin/AdminAlbumsPage'));
+const AdminCmsPage = lazyWithReload(() => import('./pages/admin/AdminCmsPage'));
+const AdminAboutPage = lazyWithReload(() => import('./pages/admin/AdminAboutPage'));
+const AdminUsersPage = lazyWithReload(() => import('./pages/admin/AdminUsersPage'));
+const AdminSettingsPage = lazyWithReload(() => import('./pages/admin/AdminSettingsPage'));
+const AdminMovementsPage = lazyWithReload(() => import('./pages/admin/AdminMovementsPage'));
+const NewsDetailPage = lazyWithReload(() => import('./pages/NewsDetailPage'));
+const AlbumDetailPage = lazyWithReload(() => import('./pages/AlbumDetailPage'));
+const AboutDetailPage = lazyWithReload(() => import('./pages/AboutDetailPage'));
+const MovementsPage = lazyWithReload(() => import('./pages/MovementsPage'));
+const MovementDetailPage = lazyWithReload(() => import('./pages/MovementDetailPage'));
+const FlagCeremonyPage = lazyWithReload(() => import('./pages/FlagCeremonyPage'));
+const CompetitionOverviewPage = lazyWithReload(() => import('./pages/CompetitionOverviewPage'));
+const PublicUnitCompetitionPage = lazyWithReload(() => import('./pages/PublicUnitCompetitionPage'));
+const StudentCompetitionPage = lazyWithReload(() => import('./pages/StudentCompetitionPage'));
+const PublicGoodDeedsPage = lazyWithReload(() => import('./pages/PublicGoodDeedsPage'));
+const PublicRewardShopPage = lazyWithReload(() => import('./pages/PublicRewardShopPage'));
+const RecordIncidentPage = lazyWithReload(() => import('./pages/RecordIncidentPage'));
+const CompetitionPendingPage = lazyWithReload(() => import('./pages/CompetitionPendingPage'));
+const CompetitionReportPage = lazyWithReload(() => import('./pages/CompetitionReportPage'));
+const AdminCompetitionPage = lazyWithReload(() => import('./pages/admin/AdminCompetitionPage'));
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { RoleGuard } from './components/auth/RoleGuard';
 import { CompetitionDetailGuard } from './components/auth/CompetitionDetailGuard';
@@ -68,7 +165,9 @@ export const AppDataContext = React.createContext<any>(null);
 
 export default function App() {
   return (
-    <AppContent />
+    <RouteLoadErrorBoundary>
+      <AppContent />
+    </RouteLoadErrorBoundary>
   );
 }
 
