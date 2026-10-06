@@ -1878,6 +1878,32 @@ export const competitionService = {
     return data;
   },
 
+  // --- AUTO LOCK COMPLETED COMPETITION WEEKS ---
+  async getAutoLockConfig(academicYearId: string) {
+    const { data, error } = await supabase.rpc('get_competition_auto_lock_config', {
+      p_academic_year_id: academicYearId,
+    });
+    if (error) {
+      console.error('Error getting auto lock config:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  async saveAutoLockConfig(academicYearId: string, isEnabled: boolean, lockIsodow: number, lockTime: string) {
+    const { data, error } = await supabase.rpc('save_competition_auto_lock_config', {
+      p_academic_year_id: academicYearId,
+      p_is_enabled: isEnabled,
+      p_lock_isodow: lockIsodow,
+      p_lock_time: lockTime,
+    });
+    if (error) {
+      console.error('Error saving auto lock config:', error);
+      throw error;
+    }
+    return data;
+  },
+
   // --- COMPETITION COMMENT TEMPLATES ---
   async getCommentTemplates(commentType?: string, search?: string): Promise<CompetitionCommentTemplate[]> {
     let query = supabase
