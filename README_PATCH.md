@@ -1,24 +1,36 @@
-# PATCH V2 - PDF nhẹ + sửa chữ/dòng bị dính
+# PATCH - PDF dạng bảng, bám sát bản xem/lưu trên web
 
-## Hiện tượng
-PDF đã nhẹ (~500 KB thay vì ~27 MB) nhưng chữ và các khối trong báo cáo sát nhau hơn bản xem trên web.
+## Mục tiêu
+Giữ ưu điểm PDF nhẹ, nhưng làm bản PDF nhìn giống modal báo cáo đã lưu nhất có thể:
+- bảng có khung rõ,
+- header xám nhạt,
+- từng ô có đường viền,
+- padding/line-height giống bản web,
+- các dòng không còn cảm giác thành một danh sách chữ liên tục.
 
-## Nguyên nhân
-Báo cáo dùng nhiều utility Tailwind `space-y-*`.
-Khi `html2canvas` clone DOM để chụp PDF, một số khoảng cách dạng logical margin/CSS variable của Tailwind không được dựng giống trình duyệt thật, nên:
-- tiêu đề / thanh thông tin / tiêu đề bảng sát nhau,
-- tên học sinh và dòng lỗi sát nhau,
-- nhiều học sinh trong cùng một lớp nhìn như bị dính chữ.
+## Thay đổi
+### `src/utils/reportPdfExporter.ts`
+- Không ép clone về width 794px nữa; giữ width gần với ReportDocument đang xem.
+- Materialize style bảng trước khi chụp:
+  - `border-collapse`
+  - border cho table/th/td
+  - nền header
+  - padding 10px
+  - line-height 1.35–1.45
+  - tránh cắt row giữa trang
+- Giữ PDF nhẹ: scale 1.5, JPEG quality 0.90, jsPDF compression.
 
-## Cách sửa
-Chỉ trong DOM clone dùng để xuất PDF:
-- materialize `space-y-6/5/4/3/2/1/0.5` thành `margin-top` pixel thật;
-- tăng `line-height` phần chi tiết vi phạm lên 1.5;
-- giữ nguyên bản xem trên website;
-- giữ tối ưu PDF nhẹ: scale 1.5 + JPEG 0.88 + jsPDF compression.
+### `src/components/competition/SaveExportReportCard.tsx`
+- Container ẩn dùng để xuất snapshot: `800px -> 848px`
+- Gần với chiều rộng thực của phần ReportDocument trong modal `max-w-4xl`.
+
+## Không thay đổi
+- Dữ liệu báo cáo
+- DB / Supabase
+- Snapshot
+- Logic lưu báo cáo
+- UI modal trên web
 
 ## Triển khai
-Copy đè:
-`src/utils/reportPdfExporter.ts`
-
-Không SQL, không Edge Function.
+Copy đè 2 file, commit/push Vercel.
+Không cần SQL hoặc Edge Function.

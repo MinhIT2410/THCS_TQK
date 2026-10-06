@@ -1357,7 +1357,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
       {/* OFF-SCREEN CONTAINER FOR STABLE HISTORY PDF EXPORT */}
       <div 
         aria-hidden="true"
-        className="fixed -left-[9999px] top-0 w-[800px] bg-white pointer-events-none opacity-0"
+        className="fixed -left-[9999px] top-0 w-[848px] bg-white pointer-events-none opacity-0"
       >
         {historyReportToExport && (
           <ReportDocument 

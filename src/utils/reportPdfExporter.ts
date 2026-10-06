@@ -346,6 +346,56 @@ function materializeVerticalSpacingForPdf(root: HTMLElement): void {
   });
 }
 
+
+/**
+ * Make the PDF clone visually match the saved-report preview:
+ * visible grid borders, header fill, padding and row separation.
+ * This only affects the cloned DOM passed to html2canvas.
+ */
+function materializeReportTableForPdf(root: HTMLElement): void {
+  root.querySelectorAll<HTMLElement>('table').forEach((table) => {
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.borderSpacing = '0';
+    table.style.tableLayout = 'auto';
+    table.style.border = '1px solid #cbd5e1';
+    table.style.backgroundColor = '#ffffff';
+  });
+
+  root.querySelectorAll<HTMLElement>('thead tr').forEach((row) => {
+    row.style.backgroundColor = '#f1f5f9';
+  });
+
+  root.querySelectorAll<HTMLElement>('th').forEach((cell) => {
+    cell.style.border = '1px solid #cbd5e1';
+    cell.style.padding = '10px';
+    cell.style.verticalAlign = 'middle';
+    cell.style.lineHeight = '1.35';
+    cell.style.backgroundColor = '#f1f5f9';
+  });
+
+  root.querySelectorAll<HTMLElement>('td').forEach((cell) => {
+    cell.style.border = '1px solid #e2e8f0';
+    cell.style.padding = '10px';
+    cell.style.verticalAlign = 'top';
+    cell.style.lineHeight = '1.45';
+    cell.style.backgroundColor = '#ffffff';
+  });
+
+  root.querySelectorAll<HTMLElement>('tbody tr').forEach((row) => {
+    row.style.breakInside = 'avoid';
+    row.style.pageBreakInside = 'avoid';
+  });
+
+  // Preserve the table-card look from the preview.
+  root.querySelectorAll<HTMLElement>('.overflow-x-auto').forEach((wrapper) => {
+    wrapper.style.border = '1px solid #cbd5e1';
+    wrapper.style.borderRadius = '8px';
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.backgroundColor = '#ffffff';
+  });
+}
+
 export async function exportReportToPdf(
   targetElement: HTMLElement | null,
   report: CompetitionWeeklyReport,
@@ -374,8 +424,11 @@ export async function exportReportToPdf(
       // Force clean document container styling for accurate A4 aspect rendering
       element.style.backgroundColor = '#ffffff';
       element.style.color = '#0f172a';
-      element.style.width = '794px'; // Standard 96 DPI A4 width
-      element.style.maxWidth = 'none';
+      // Keep the same visual width as the saved-report preview instead of
+      // reflowing the document into a narrower hard-coded width.
+      const sourceWidth = Math.max(800, Math.round(targetElement.getBoundingClientRect().width || targetElement.offsetWidth || 848));
+      element.style.width = `${sourceWidth}px`;
+      element.style.maxWidth = `${sourceWidth}px`;
       element.style.margin = '0 auto';
       element.style.padding = '24px';
       element.style.boxSizing = 'border-box';
@@ -405,6 +458,7 @@ export async function exportReportToPdf(
       // Tailwind space-y-* can collapse visually in html2canvas.
       // Convert it to ordinary margin-top values in the export clone only.
       materializeVerticalSpacingForPdf(element);
+      materializeReportTableForPdf(element);
 
       // Sanitize OKLCH colors on cloned DOM
       sanitizeClonedDocColors(clonedDoc, element);
@@ -490,7 +544,7 @@ export async function exportReportToPdf(
     // The report is mostly text on a white/light background.
     // JPEG dramatically reduces PDF size compared with embedding a lossless PNG per page.
     // 0.88 keeps small text and thin table borders visually clean at 1.5x capture scale.
-    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.88);
+    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.90);
     const pdfImageHeight = slicePx * mmPerCanvasPx;
 
     if (pageIndex > 0) {
