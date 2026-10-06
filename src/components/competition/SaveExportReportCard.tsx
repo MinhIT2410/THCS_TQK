@@ -121,9 +121,9 @@ export function groupIncidentsByStudentAndRule(classIncidents: CompetitionIncide
         currentRule.times.push(new Date(inc.occurred_at));
       }
 
-      // Ghi chú lỗi do giám thị/người ghi nhận nhập khi tạo sự việc.
-      // Chỉ giữ ghi chú có nội dung và loại bỏ bản trùng để báo cáo gọn.
-      const note = inc.evidence_note?.trim();
+      // Chỉ lấy phần mô tả ghi thêm của giám thị.
+      // Không đưa title/evidence_note vào báo cáo để giữ nội dung ngắn gọn.
+      const note = inc.description?.trim();
       if (note && !currentRule.notes.includes(note)) {
         currentRule.notes.push(note);
       }
