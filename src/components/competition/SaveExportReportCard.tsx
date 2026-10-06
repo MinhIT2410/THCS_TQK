@@ -42,6 +42,11 @@ import { ReportDocument } from './ReportDocument';
 
 interface SaveExportReportCardProps {
   allowedClassIds?: string[];
+  /**
+   * GVCN mode: only live preview + PDF export for assigned class(es).
+   * No snapshot save/history, so this mode does not create extra storage rows.
+   */
+  exportOnly?: boolean;
 }
 
 interface PeriodOption {
@@ -243,7 +248,7 @@ export function findDefaultSemester(terms: AcademicTermItem[], todayStr: string)
   return null;
 }
 
-export default function SaveExportReportCard({ allowedClassIds }: SaveExportReportCardProps) {
+export default function SaveExportReportCard({ allowedClassIds, exportOnly = false }: SaveExportReportCardProps) {
   const { user } = useAuth();
 
   // CMS Template Config
@@ -270,6 +275,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
   
   const [gradeLevels, setGradeLevels] = useState<GradeItem[]>([]);
   const [selectedGradeId, setSelectedGradeId] = useState<string>('ALL'); // 'ALL' or grade_level_id
+  const [selectedClassId, setSelectedClassId] = useState<string>('ALL'); // 'ALL' or class_id
 
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [incidents, setIncidents] = useState<CompetitionIncident[]>([]);
@@ -415,8 +421,20 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
         }
         setAllClasses(availClasses);
 
-        // Load Saved Reports
-        await loadSavedReports(currentYear?.id);
+        // GVCN/export-only: lock the default scope to the assigned class.
+        // (If a teacher ever has multiple active homeroom classes, they can choose between those classes only.)
+        if (exportOnly && availClasses.length > 0) {
+          const firstClass = availClasses[0];
+          setSelectedClassId(firstClass.id);
+          if (firstClass.grade_level_id) {
+            setSelectedGradeId(firstClass.grade_level_id);
+          }
+        }
+
+        // GVCN does not need saved school-wide snapshots/history.
+        if (!exportOnly) {
+          await loadSavedReports(currentYear?.id);
+        }
 
       } catch (err) {
         console.error('Lỗi khởi tạo Thẻ Báo cáo:', err);
@@ -426,7 +444,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
     }
 
     init();
-  }, [allowedClassIds, user]);
+  }, [allowedClassIds, exportOnly, user]);
 
   // Load Month Options based on Current Academic Year
   const monthOptions = useMemo(() => {
@@ -625,8 +643,8 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
     return { id: selectedGradeId, name: `Khối ${selectedGradeId}` };
   }, [gradeLevels, selectedGradeId]);
 
-  // Filtered Classes for selected Grade
-  const filteredClasses = useMemo(() => {
+  // Classes available inside the selected grade.
+  const gradeFilteredClasses = useMemo(() => {
     let list = allClasses;
     if (selectedGradeId !== 'ALL') {
       list = allClasses.filter(c => {
@@ -637,9 +655,35 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
       });
     }
 
-    // Sort naturally by class name
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    return [...list].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }, [allClasses, selectedGradeId]);
+
+  // Final class scope: all classes in grade, or one selected class.
+  const filteredClasses = useMemo(() => {
+    if (selectedClassId === 'ALL') return gradeFilteredClasses;
+    return gradeFilteredClasses.filter(c => c.id === selectedClassId);
+  }, [gradeFilteredClasses, selectedClassId]);
+
+  const selectedClassObj = useMemo(
+    () => allClasses.find(c => c.id === selectedClassId) || null,
+    [allClasses, selectedClassId]
+  );
+
+  // If grade changes and the selected class is no longer inside that grade,
+  // reset to all classes. GVCN with a single assigned class stays locked to it.
+  useEffect(() => {
+    if (selectedClassId === 'ALL') return;
+    if (gradeFilteredClasses.some(c => c.id === selectedClassId)) return;
+
+    if (exportOnly && allClasses.length === 1) {
+      setSelectedClassId(allClasses[0].id);
+      return;
+    }
+
+    setSelectedClassId('ALL');
+  }, [selectedGradeId, gradeFilteredClasses, selectedClassId, exportOnly, allClasses]);
 
   const classMap = useMemo(() => {
     const map = new Map<string, ClassItem>();
@@ -661,15 +705,19 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
         setLoadingData(true);
 
         let targetUnitIds: string[] | undefined = undefined;
-        if (selectedGradeId !== 'ALL') {
+
+        if (selectedClassId !== 'ALL') {
+          targetUnitIds = [selectedClassId];
+        } else if (selectedGradeId !== 'ALL') {
           targetUnitIds = filteredClasses.map(c => c.id);
-          if (targetUnitIds.length === 0) {
-            setIncidents([]);
-            setLoadingData(false);
-            return;
-          }
         } else if (allowedClassIds && allowedClassIds.length > 0) {
           targetUnitIds = allowedClassIds;
+        }
+
+        if (targetUnitIds && targetUnitIds.length === 0) {
+          setIncidents([]);
+          setLoadingData(false);
+          return;
         }
 
         const res = await competitionService.getWeeklyOfficialIncidents({
@@ -688,7 +736,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
     }
 
     fetchLiveIncidents();
-  }, [currentPeriodInfo, selectedGradeId, filteredClasses, allowedClassIds, loadingInitial]);
+  }, [currentPeriodInfo, selectedGradeId, selectedClassId, filteredClasses, allowedClassIds, loadingInitial]);
 
   // Live Class Report Rows
   const classReportRows = useMemo<ClassReportRowSnapshot[]>(() => {
@@ -743,9 +791,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
     rulesMap.forEach(item => {
       const classEntries: { className: string; count: number }[] = [];
       item.classCounts.forEach((cnt, unitId) => {
-        if (selectedGradeId !== 'ALL') {
-          if (!filteredClasses.some(c => c.id === unitId)) return;
-        }
+        if (!filteredClasses.some(c => c.id === unitId)) return;
         const cls = classMap.get(unitId);
         classEntries.push({ className: cls?.name || 'Lớp', count: cnt });
       });
@@ -766,7 +812,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
 
     result.sort((a, b) => b.count - a.count || a.rule_name.localeCompare(b.rule_name));
     return result;
-  }, [incidents, classMap, filteredClasses, selectedGradeId]);
+  }, [incidents, classMap, filteredClasses]);
 
   const totalViolationsCount = useMemo(() => {
     return incidents.length;
@@ -785,8 +831,8 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
       academic_year_name: currentYearInfo?.name || '2025-2026',
       week_id: currentPeriodInfo.week_id || null,
       week_name: currentPeriodInfo.period_label,
-      grade_level_id: selectedGradeId === 'ALL' ? null : selectedGradeId,
-      grade_name: selectedGradeObj.name,
+      grade_level_id: selectedClassObj?.grade_level_id || (selectedGradeId === 'ALL' ? null : selectedGradeId),
+      grade_name: selectedClassObj ? `Lớp ${selectedClassObj.name}` : selectedGradeObj.name,
       total_violations: totalViolationsCount,
       violation_stats: liveStats,
       class_report_rows: classReportRows,
@@ -799,8 +845,9 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
   }, [
     currentPeriodInfo,
     currentYearInfo, 
-    selectedGradeId, 
-    selectedGradeObj, 
+    selectedGradeId,
+    selectedGradeObj,
+    selectedClassObj, 
     totalViolationsCount, 
     liveStats, 
     classReportRows, 
@@ -974,7 +1021,9 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
               LƯU BÁO CÁO & XUẤT FILE
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Lập biên bản tổng kết vi phạm thi đua theo Tuần, Tháng, Học kỳ hoặc Năm học, lưu snapshot cố định và xuất PDF
+              {exportOnly
+                ? 'Xuất biên bản vi phạm theo lớp chủ nhiệm. Dữ liệu được tạo trực tiếp khi xuất, không lưu thêm snapshot.'
+                : 'Lập biên bản tổng kết vi phạm thi đua theo Tuần, Tháng, Học kỳ hoặc Năm học, lưu snapshot cố định và xuất PDF'}
             </p>
           </div>
         </div>
@@ -1052,8 +1101,8 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
           </div>
         </div>
 
-        {/* ROW 2: SUB-PICKER & GRADE SELECTOR */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+        {/* ROW 2: SUB-PICKER, GRADE & CLASS SELECTOR */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
           {/* DYNAMIC SUB-PICKER BASED ON PERIOD TYPE */}
           <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1139,24 +1188,52 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
             <select
               value={selectedGradeId}
               onChange={(e) => setSelectedGradeId(e.target.value)}
-              className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium"
+              disabled={exportOnly && allClasses.length > 0}
+              className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <option value="ALL">Tất cả khối</option>
+              {!exportOnly && <option value="ALL">Tất cả khối</option>}
               {gradeLevels.length > 0 ? (
-                gradeLevels.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
-                  </option>
-                ))
+                gradeLevels
+                  .filter((g) => !exportOnly || allClasses.some(c => c.grade_level_id === g.id))
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
+                    </option>
+                  ))
               ) : (
                 <>
-                  <option value="6">Khối 6</option>
-                  <option value="7">Khối 7</option>
-                  <option value="8">Khối 8</option>
-                  <option value="9">Khối 9</option>
+                  {!exportOnly && <option value="6">Khối 6</option>}
+                  {!exportOnly && <option value="7">Khối 7</option>}
+                  {!exportOnly && <option value="8">Khối 8</option>}
+                  {!exportOnly && <option value="9">Khối 9</option>}
                 </>
               )}
             </select>
+          </div>
+
+          {/* CLASS SELECTOR */}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              4. Chọn Lớp
+            </label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              disabled={exportOnly && gradeFilteredClasses.length <= 1}
+              className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {!exportOnly && <option value="ALL">Tất cả lớp trong phạm vi</option>}
+              {gradeFilteredClasses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  Lớp {c.name}
+                </option>
+              ))}
+            </select>
+            {exportOnly && selectedClassObj && (
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                Chỉ xuất dữ liệu lớp chủ nhiệm của bạn.
+              </p>
+            )}
           </div>
         </div>
 
@@ -1177,16 +1254,18 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
             <span>Xem trước Biên bản Báo cáo (Live Preview)</span>
           </h3>
           <div className="flex items-center gap-2">
-            {/* ACTION 1: LƯU BÁO CÁO */}
-            <button
-              type="button"
-              onClick={handleSaveReport}
-              disabled={savingReport || loadingData || !currentPeriodInfo.hasValidDates}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>{savingReport ? 'Đang lưu...' : 'Lưu báo cáo'}</span>
-            </button>
+            {/* ACTION 1: LƯU BÁO CÁO - chỉ người có quyền quản trị/giám thị */}
+            {!exportOnly && (
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                disabled={savingReport || loadingData || !currentPeriodInfo.hasValidDates}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingReport ? 'Đang lưu...' : 'Lưu báo cáo'}</span>
+              </button>
+            )}
 
             {/* ACTION 2: XUẤT PDF */}
             <button
@@ -1225,6 +1304,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
       </div>
 
       {/* SAVED REPORT HISTORY SECTION */}
+      {!exportOnly && (
       <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -1251,7 +1331,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
                   <th className="px-4 py-3 w-12 text-center">STT</th>
                   <th className="px-4 py-3">Loại kỳ</th>
                   <th className="px-4 py-3">Tên kỳ báo cáo</th>
-                  <th className="px-4 py-3">Khối</th>
+                  <th className="px-4 py-3">Phạm vi</th>
                   <th className="px-4 py-3 text-center">Tổng vi phạm</th>
                   <th className="px-4 py-3">Người lập</th>
                   <th className="px-4 py-3">Thời điểm tạo</th>
@@ -1311,6 +1391,7 @@ export default function SaveExportReportCard({ allowedClassIds }: SaveExportRepo
           </div>
         )}
       </div>
+      )}
 
       {/* DETAIL SNAPSHOT MODAL */}
       {selectedDetailReport && (

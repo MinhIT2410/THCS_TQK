@@ -124,14 +124,6 @@ export default function CompetitionReportPage() {
     checkReportPermission();
   }, [user, isAuthenticated, loading, profileLoading, hasAnyRole]);
 
-  // GVCN only gets live weekly/statistics views. Prevent direct URL access to school-wide saved/export reports.
-  useEffect(() => {
-    if (isHomeroomScoped && activeReportTab === 'save-export') {
-      setActiveReportTab('statistics');
-      setSearchParams({ tab: 'statistics' }, { replace: true });
-    }
-  }, [isHomeroomScoped, activeReportTab, setSearchParams]);
-
   // Loading state: Only show initial spinner if profile is not loaded or permission hasn't been determined yet
   if (loading || (isAuthenticated && !profile && profileLoading) || (hasPermission === null && checkingPermission)) {
     return (
@@ -225,7 +217,7 @@ export default function CompetitionReportPage() {
       </div>
 
       {/* Segmented Tab Selector */}
-      <div className={`flex items-center gap-1.5 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-x-auto no-scrollbar sm:grid ${isHomeroomScoped ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-x-auto no-scrollbar sm:grid sm:grid-cols-3">
 
         <button
           type="button"
@@ -251,26 +243,29 @@ export default function CompetitionReportPage() {
           THỐNG KÊ LỖI VI PHẠM
         </button>
 
-        {!isHomeroomScoped && (
-          <button
-            type="button"
-            onClick={() => handleTabChange('save-export')}
-            className={`h-10 px-4 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center justify-center ${
-              activeReportTab === 'save-export'
-                ? 'bg-red-600 text-white shadow-xs font-bold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
-            }`}
-          >
-            LƯU BÁO CÁO & XUẤT FILE
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => handleTabChange('save-export')}
+          className={`h-10 px-4 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center justify-center ${
+            activeReportTab === 'save-export'
+              ? 'bg-red-600 text-white shadow-xs font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
+          }`}
+        >
+          {isHomeroomScoped ? 'XUẤT BÁO CÁO LỚP' : 'LƯU BÁO CÁO & XUẤT FILE'}
+        </button>
       </div>
 
       {/* Active Tab Content Panel */}
       <div>
         {activeReportTab === 'weekly' && <WeeklyIncidentsReportCard allowedClassIds={allowedClassIds} />}
         {activeReportTab === 'statistics' && <ViolationStatisticsCard allowedClassIds={allowedClassIds} />}
-        {!isHomeroomScoped && activeReportTab === 'save-export' && <SaveExportReportCard />}
+        {activeReportTab === 'save-export' && (
+          <SaveExportReportCard
+            allowedClassIds={allowedClassIds}
+            exportOnly={isHomeroomScoped}
+          />
+        )}
       </div>
     </div>
   );
