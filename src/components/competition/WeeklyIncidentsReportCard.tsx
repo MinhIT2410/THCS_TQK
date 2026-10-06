@@ -57,6 +57,8 @@ const isImageEvidence = (ev: CompetitionEvidence) => {
 };
 
 export default function WeeklyIncidentsReportCard({ allowedClassIds }: WeeklyIncidentsReportCardProps) {
+  const isHomeroomScoped = Boolean(allowedClassIds && allowedClassIds.length > 0);
+
   // Main Data States
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
@@ -115,6 +117,19 @@ export default function WeeklyIncidentsReportCard({ allowedClassIds }: WeeklyInc
           availableClasses = availableClasses.filter(c => allowedClassIds.includes(c.id));
         }
         setAllClasses(availableClasses);
+
+        // GVCN: khóa cứng khối + lớp theo homeroom_assignments.
+        // Không để trạng thái "Tất cả lớp" dù dữ liệu backend vốn đã bị scope.
+        if (allowedClassIds && allowedClassIds.length > 0 && availableClasses.length > 0) {
+          const homeroomClass = availableClasses[0];
+          setSelectedClassId(homeroomClass.id);
+          if (homeroomClass.grade_level_id) {
+            setSelectedGrade(homeroomClass.grade_level_id);
+          } else {
+            const gradeNum = homeroomClass.name.match(/^(\d+)/)?.[1];
+            if (gradeNum) setSelectedGrade(gradeNum);
+          }
+        }
 
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu khởi tạo cho Thẻ Ghi nhận trong tuần:', err);
@@ -308,21 +323,24 @@ export default function WeeklyIncidentsReportCard({ allowedClassIds }: WeeklyInc
           <select
             value={selectedGrade}
             onChange={(e) => handleGradeChange(e.target.value)}
-            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium"
+            disabled={isHomeroomScoped}
+            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <option value="ALL">Tất cả khối</option>
+            {!isHomeroomScoped && <option value="ALL">Tất cả khối</option>}
             {gradeLevels.length > 0 ? (
-              gradeLevels.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
-                </option>
-              ))
+              gradeLevels
+                .filter((g) => !isHomeroomScoped || allClasses.some(c => c.grade_level_id === g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
+                  </option>
+                ))
             ) : (
               <>
-                <option value="6">Khối 6</option>
-                <option value="7">Khối 7</option>
-                <option value="8">Khối 8</option>
-                <option value="9">Khối 9</option>
+                {!isHomeroomScoped && <option value="6">Khối 6</option>}
+                {!isHomeroomScoped && <option value="7">Khối 7</option>}
+                {!isHomeroomScoped && <option value="8">Khối 8</option>}
+                {!isHomeroomScoped && <option value="9">Khối 9</option>}
               </>
             )}
           </select>
@@ -336,15 +354,21 @@ export default function WeeklyIncidentsReportCard({ allowedClassIds }: WeeklyInc
           <select
             value={selectedClassId}
             onChange={(e) => setSelectedClassId(e.target.value)}
-            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium"
+            disabled={isHomeroomScoped}
+            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <option value="ALL">Tất cả lớp</option>
+            {!isHomeroomScoped && <option value="ALL">Tất cả lớp</option>}
             {filteredClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name}
               </option>
             ))}
           </select>
+          {isHomeroomScoped && (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+              Chỉ xem dữ liệu lớp chủ nhiệm của bạn.
+            </p>
+          )}
         </div>
       </div>
 

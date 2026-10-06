@@ -1,25 +1,36 @@
-# HOTFIX - Khôi phục quyền xem báo cáo GVCN sau patch cột điểm
+# PATCH - Khóa cứng bộ lọc GVCN ở Ghi nhận & Thống kê
 
-## Nguyên nhân
-Patch `competition_score_columns` trước đó có copy đè `src/services/competitionService.ts`
-từ một bản source cũ.
+## Mục tiêu
+Cho 2 tab:
+- `GHI NHẬN TRONG TUẦN`
+- `THỐNG KÊ LỖI VI PHẠM`
 
-Vì vậy nó vô tình làm mất:
-- `getMyActiveHomeroomClassIds()` -> GVCN không còn được nhận diện lớp chủ nhiệm để hiện/xem báo cáo.
-- phần tối ưu ảnh upload minh chứng > 3 MB.
-- các RPC cấu hình auto-lock tuần đã thêm trước đó.
+hoạt động giống tab `XUẤT BÁO CÁO LỚP` khi người dùng là GVCN.
 
-## Hotfix này
-Khôi phục `competitionService.ts` từ bản cumulative mới hơn, đồng thời GIỮ phần mới của cột điểm:
-- `incident_bonus_points`
-- `incident_penalty_points`
-trong public snapshot mapping.
+## GVCN
+- Khối tự chọn đúng khối của lớp chủ nhiệm và **disabled**.
+- Lớp tự chọn đúng lớp chủ nhiệm và **disabled**.
+- Không còn option `Tất cả khối` / `Tất cả lớp`.
+- Backend query vẫn truyền đúng `allowedClassIds`, đồng thời UI cũng khóa cứng nên không gây hiểu nhầm.
+- Có dòng `Chỉ xem dữ liệu lớp chủ nhiệm của bạn.`
 
-## Chỉ 1 file
-`src/services/competitionService.ts`
+## Thống kê
+Bổ sung bộ lọc `4. Lớp`.
+- Admin/người có quyền rộng: vẫn có thể chọn Tất cả lớp hoặc một lớp cụ thể.
+- GVCN: khóa đúng lớp mình.
 
-Không SQL migration.
-Không Edge Function.
+## Phạm vi patch
+Chỉ 2 component UI/report:
+- `src/components/competition/WeeklyIncidentsReportCard.tsx`
+- `src/components/competition/ViolationStatisticsCard.tsx`
 
-Sau deploy, đăng nhập lại tài khoản GVCN và tải lại `/thi-dua`.
-Phần xem/xuất báo cáo lớp chủ nhiệm phải xuất hiện lại.
+Không đụng:
+- `competitionService.ts`
+- DB / migration
+- Edge Function
+- phần PDF
+- auto-lock
+- nén ảnh
+- các hotfix trước
+
+=> Patch tối thiểu, tránh ghi đè tính năng đã làm.

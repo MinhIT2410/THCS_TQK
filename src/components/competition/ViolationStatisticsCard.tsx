@@ -65,6 +65,8 @@ interface AggregatedRuleViolation {
 }
 
 export default function ViolationStatisticsCard({ allowedClassIds }: ViolationStatisticsCardProps) {
+  const isHomeroomScoped = Boolean(allowedClassIds && allowedClassIds.length > 0);
+
   // Main Data States
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
@@ -78,6 +80,7 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
   const [milestonePeriodId, setMilestonePeriodId] = useState<string>('');
   
   const [selectedGrade, setSelectedGrade] = useState<string>('ALL'); // 'ALL' or grade_level_id or '6'|'7'|'8'|'9'
+  const [selectedClassId, setSelectedClassId] = useState<string>('ALL'); // 'ALL' or class_id
   
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [gradeLevels, setGradeLevels] = useState<GradeItem[]>([]);
@@ -164,6 +167,18 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
         }
         setAllClasses(availableClasses);
 
+        // GVCN: khóa cứng phạm vi vào đúng lớp chủ nhiệm.
+        if (allowedClassIds && allowedClassIds.length > 0 && availableClasses.length > 0) {
+          const homeroomClass = availableClasses[0];
+          setSelectedClassId(homeroomClass.id);
+          if (homeroomClass.grade_level_id) {
+            setSelectedGrade(homeroomClass.grade_level_id);
+          } else {
+            const gradeNum = homeroomClass.name.match(/^(\d+)/)?.[1];
+            if (gradeNum) setSelectedGrade(gradeNum);
+          }
+        }
+
       } catch (err) {
         console.error('Lỗi khi khởi tạo bộ lọc Thống kê Lỗi Vi phạm:', err);
       } finally {
@@ -237,16 +252,19 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
 
         // Determine unit IDs filter
         let targetUnitIds: string[] | undefined = undefined;
-        if (selectedGrade !== 'ALL') {
+        if (selectedClassId !== 'ALL') {
+          targetUnitIds = [selectedClassId];
+        } else if (selectedGrade !== 'ALL') {
           targetUnitIds = filteredClasses.map(c => c.id);
-          if (targetUnitIds.length === 0) {
-            setCurrentIncidents([]);
-            setMilestoneIncidents([]);
-            setLoadingIncidents(false);
-            return;
-          }
         } else if (allowedClassIds && allowedClassIds.length > 0) {
           targetUnitIds = allowedClassIds;
+        }
+
+        if (targetUnitIds && targetUnitIds.length === 0) {
+          setCurrentIncidents([]);
+          setMilestoneIncidents([]);
+          setLoadingIncidents(false);
+          return;
         }
 
         // Fetch official APPROVED incidents for both periods in parallel
@@ -276,7 +294,7 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
     }
 
     fetchComparisonData();
-  }, [currentPeriodId, milestonePeriodId, selectedGrade, currentOptionsList, filteredClasses, allowedClassIds, loadingInitial]);
+  }, [currentPeriodId, milestonePeriodId, selectedGrade, selectedClassId, currentOptionsList, filteredClasses, allowedClassIds, loadingInitial]);
 
   // Selected period display objects
   const currentPeriodObj = useMemo(() => currentOptionsList.find(p => p.id === currentPeriodId), [currentOptionsList, currentPeriodId]);
@@ -370,7 +388,7 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
     rows.sort((a, b) => b.currentCount - a.currentCount || b.milestoneCount - a.milestoneCount || a.ruleName.localeCompare(b.ruleName));
 
     return rows;
-  }, [currentIncidents, milestoneIncidents, classMap, filteredClasses, selectedGrade]);
+  }, [currentIncidents, milestoneIncidents, classMap, filteredClasses, selectedGrade, selectedClassId]);
 
   if (loadingInitial) {
     return (
@@ -473,25 +491,56 @@ export default function ViolationStatisticsCard({ allowedClassIds }: ViolationSt
           </label>
           <select
             value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium"
+            onChange={(e) => {
+              setSelectedGrade(e.target.value);
+              if (!isHomeroomScoped) setSelectedClassId('ALL');
+            }}
+            disabled={isHomeroomScoped}
+            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <option value="ALL">Tất cả khối</option>
+            {!isHomeroomScoped && <option value="ALL">Tất cả khối</option>}
             {gradeLevels.length > 0 ? (
-              gradeLevels.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
-                </option>
-              ))
+              gradeLevels
+                .filter((g) => !isHomeroomScoped || allClasses.some(c => c.grade_level_id === g.id))
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name.startsWith('Khối') ? g.name : `Khối ${g.name}`}
+                  </option>
+                ))
             ) : (
               <>
-                <option value="6">Khối 6</option>
-                <option value="7">Khối 7</option>
-                <option value="8">Khối 8</option>
-                <option value="9">Khối 9</option>
+                {!isHomeroomScoped && <option value="6">Khối 6</option>}
+                {!isHomeroomScoped && <option value="7">Khối 7</option>}
+                {!isHomeroomScoped && <option value="8">Khối 8</option>}
+                {!isHomeroomScoped && <option value="9">Khối 9</option>}
               </>
             )}
           </select>
+        </div>
+
+        {/* 4. Lọc theo Lớp */}
+        <div className="space-y-1">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+            4. Lớp
+          </label>
+          <select
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            disabled={isHomeroomScoped}
+            className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {!isHomeroomScoped && <option value="ALL">Tất cả lớp</option>}
+            {filteredClasses.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+          {isHomeroomScoped && (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+              Chỉ xem dữ liệu lớp chủ nhiệm của bạn.
+            </p>
+          )}
         </div>
       </div>
 
