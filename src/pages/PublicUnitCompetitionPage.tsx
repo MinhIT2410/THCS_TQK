@@ -224,9 +224,10 @@ export default function PublicUnitCompetitionPage() {
                   <th className="py-3 px-4 w-16 text-center">Hạng</th>
                   <th className="py-3 px-4">Chi đội</th>
                   <th className="py-3 px-4 text-center">Khởi điểm</th>
-                  <th className="py-3 px-4 text-center text-emerald-600 dark:text-emerald-400">Điểm cộng</th>
-                  <th className="py-3 px-4 text-center text-rose-600 dark:text-rose-400">Điểm trừ</th>
-                  <th className="py-3 px-4 text-center font-black">Điểm tổng kết</th>
+                  <th className="py-3 px-4 text-center text-rose-600 dark:text-rose-400">Vi phạm</th>
+                  <th className="py-3 px-4 text-center text-emerald-600 dark:text-emerald-400">Điểm thưởng</th>
+                  <th className="py-3 px-4 text-center">Điều chỉnh khác</th>
+                  <th className="py-3 px-4 text-center font-black">Tổng</th>
                   <th className="py-3 px-4">Nhận xét thi đua</th>
                 </tr>
               </thead>
@@ -275,11 +276,17 @@ export default function PublicUnitCompetitionPage() {
                         <td className="py-3 px-4 text-center font-mono text-slate-500">
                           {item.starting_points}
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          +{item.manual_bonus_points || 0}
-                        </td>
                         <td className="py-3 px-4 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
-                          -{item.manual_penalty_points || 0}
+                          -{item.incident_penalty_points || 0}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          +{item.incident_bonus_points || 0}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {(() => {
+                            const adjustment = (item.manual_bonus_points || 0) - (item.manual_penalty_points || 0);
+                            return adjustment > 0 ? `+${adjustment}` : adjustment;
+                          })()}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className="font-mono font-black text-sm px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200/60 dark:border-slate-700">
@@ -340,18 +347,27 @@ export default function PublicUnitCompetitionPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
                         <div className="text-[10px] text-slate-400 font-bold">Khởi điểm</div>
                         <div className="font-mono font-bold text-slate-700 dark:text-slate-200">{item.starting_points}</div>
                       </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl">
-                        <div className="text-[10px] text-emerald-600 font-bold">Điểm cộng</div>
-                        <div className="font-mono font-bold text-emerald-700 dark:text-emerald-300">+{item.manual_bonus_points || 0}</div>
-                      </div>
                       <div className="bg-rose-50 dark:bg-rose-950/40 p-2 rounded-xl">
-                        <div className="text-[10px] text-rose-600 font-bold">Điểm trừ</div>
-                        <div className="font-mono font-bold text-rose-700 dark:text-rose-300">-{item.manual_penalty_points || 0}</div>
+                        <div className="text-[10px] text-rose-600 font-bold">Vi phạm</div>
+                        <div className="font-mono font-bold text-rose-700 dark:text-rose-300">-{item.incident_penalty_points || 0}</div>
+                      </div>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl">
+                        <div className="text-[10px] text-emerald-600 font-bold">Điểm thưởng</div>
+                        <div className="font-mono font-bold text-emerald-700 dark:text-emerald-300">+{item.incident_bonus_points || 0}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl">
+                        <div className="text-[10px] text-slate-500 font-bold">Điều chỉnh khác</div>
+                        <div className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                          {(() => {
+                            const adjustment = (item.manual_bonus_points || 0) - (item.manual_penalty_points || 0);
+                            return adjustment > 0 ? `+${adjustment}` : adjustment;
+                          })()}
+                        </div>
                       </div>
                     </div>
 

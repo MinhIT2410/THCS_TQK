@@ -1,37 +1,36 @@
-# PATCH - Lọc theo Lớp + GVCN tự xuất PDF lớp mình
+# PATCH - Làm rõ cấu trúc điểm thi đua
 
-## Mục tiêu
-1. Thêm bộ lọc **Lớp** vào tab `LƯU BÁO CÁO & XUẤT FILE`.
-2. Admin/Giám thị có thể chọn:
-   - Tất cả khối
-   - Một khối
-   - Một lớp cụ thể
-3. GVCN được mở tab **XUẤT BÁO CÁO LỚP** nhưng chỉ thấy lớp mình chủ nhiệm.
-4. GVCN chỉ xuất PDF trực tiếp, **không lưu snapshot**, nên gần như không tăng dung lượng Supabase.
+## Cột mới
+Thay các cột mơ hồ `Điểm cộng / Điểm trừ` bằng:
 
-## Hành vi GVCN
-- Phạm vi lấy từ `homeroom_assignments` hiện có.
-- Khối/lớp bị giới hạn theo lớp chủ nhiệm.
-- Không thể xem/xuất lớp khác bằng UI.
-- Không hiện nút `Lưu báo cáo`.
-- Không hiện lịch sử snapshot toàn trường.
-- Có thể chọn Tuần / Tháng / Học kỳ / Năm học rồi xuất PDF lớp mình.
+1. **KHỞI ĐIỂM**
+2. **VI PHẠM**
+3. **ĐIỂM THƯỞNG**
+4. **ĐIỀU CHỈNH KHÁC**
+5. **TỔNG**
 
-## Hành vi Admin/Giám thị
-- Có thêm dropdown `4. Chọn Lớp`.
-- `Tất cả lớp trong phạm vi` giữ hành vi cũ.
-- Chọn 1 lớp -> preview/PDF chỉ có lớp đó.
-- Nếu bấm `Lưu báo cáo`, snapshot sẽ lưu đúng phạm vi đang xem như trước.
+## Công thức
+`TỔNG = KHỞI ĐIỂM - VI PHẠM + ĐIỂM THƯỞNG + ĐIỀU CHỈNH KHÁC`
 
-## Dung lượng
-GVCN export PDF là tạo file ở trình duyệt theo yêu cầu, không upload lại Supabase.
-=> Không nhân 65 bản PDF mỗi tuần, không tăng storage đáng kể.
+Trong đó:
+- `VI PHẠM` = điểm trừ phát sinh từ các sự việc/rule đã duyệt (`incident_penalty_points`)
+- `ĐIỂM THƯỞNG` = điểm cộng phát sinh từ sự việc khen thưởng (`incident_bonus_points`)
+- `ĐIỀU CHỈNH KHÁC` = phần quản trị điều chỉnh tay:
+  `manual_bonus_points - manual_penalty_points`
 
-## File thay đổi
-- `src/pages/CompetitionReportPage.tsx`
-- `src/components/competition/SaveExportReportCard.tsx`
+Ví dụ:
+`100 - 0 + 6 + 0 = 106`
 
-## Yêu cầu nền
-Patch này dựa trên phần GVCN report scope đã làm trước đó (`getMyActiveHomeroomClassIds`) và giữ phần ghi chú lỗi/PDF hiện tại.
+## Phạm vi sửa
+- Bảng quản trị Tuần thi đua
+- Bảng tổng hợp tuần
+- Bảng xếp hạng công khai desktop
+- Thẻ mobile công khai
+- Sửa service public để đọc luôn `incident_bonus_points` và `incident_penalty_points` từ snapshot
 
-Không SQL migration. Không Edge Function.
+## Không cần migration
+Bảng `competition_public_unit_snapshots` hiện đã có sẵn:
+- `incident_bonus_points`
+- `incident_penalty_points`
+
+nên không cần SQL/DB migration.

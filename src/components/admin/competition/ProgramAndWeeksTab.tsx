@@ -37,7 +37,6 @@ import {
   WEEK_STATUS_LABELS,
   CompetitionAutoPublishConfig,
   CompetitionAutoWeekConfig,
-  CompetitionAutoLockConfig,
   CompetitionCommentTemplate,
 } from '../../../types/competition';
 import { formatCode } from './ProgramsAndRulesTab';
@@ -145,19 +144,6 @@ export default function ProgramAndWeeksTab() {
   const [triggeringPublish, setTriggeringPublish] = useState(false);
   const [autoWeekConfig, setAutoWeekConfig] = useState<CompetitionAutoWeekConfig | null>(null);
   const [autoWeekEnabled, setAutoWeekEnabled] = useState(false);
-  const [autoLockConfig, setAutoLockConfig] = useState<CompetitionAutoLockConfig | null>(null);
-  const [autoLockEnabled, setAutoLockEnabled] = useState(false);
-  const [autoLockIsodow, setAutoLockIsodow] = useState(1);
-  const [autoLockTime, setAutoLockTime] = useState('00:05');
-  const AUTO_LOCK_DAYS = [
-    { value: 1, label: 'Thứ Hai' },
-    { value: 2, label: 'Thứ Ba' },
-    { value: 3, label: 'Thứ Tư' },
-    { value: 4, label: 'Thứ Năm' },
-    { value: 5, label: 'Thứ Sáu' },
-    { value: 6, label: 'Thứ Bảy' },
-    { value: 7, label: 'Chủ Nhật' },
-  ];
 
   const handleToggleScheduleTime = (timeStr: string) => {
     if (scheduleTimes.includes(timeStr)) {
@@ -195,38 +181,24 @@ export default function ProgramAndWeeksTab() {
       alert('Vui lòng chọn ít nhất một khung giờ công bố.');
       return;
     }
-    if (autoLockEnabled && !/^([01]\d|2[0-3]):[0-5]\d$/.test(autoLockTime)) {
-      alert('Vui lòng chọn giờ tự động khóa hợp lệ.');
-      return;
-    }
 
     try {
       setScheduleSaving(true);
-      const [publishRes, weekRes, lockRes] = await Promise.all([
+      const [publishRes, weekRes] = await Promise.all([
         competitionService.saveAutoPublishConfig(selectedYearId, scheduleEnabled, scheduleTimes),
         competitionService.saveAutoWeekConfig(selectedYearId, autoWeekEnabled),
-        competitionService.saveAutoLockConfig(selectedYearId, autoLockEnabled, autoLockIsodow, autoLockTime),
       ]);
       if (publishRes?.config) {
         setAutoPublishConfig(publishRes.config);
       }
-      const [freshWeekConfig, freshLockConfig] = await Promise.all([
-        competitionService.getAutoWeekConfig(selectedYearId),
-        competitionService.getAutoLockConfig(selectedYearId),
-      ]);
+      const freshWeekConfig = await competitionService.getAutoWeekConfig(selectedYearId);
       setAutoWeekConfig(freshWeekConfig);
       setAutoWeekEnabled(Boolean(freshWeekConfig?.is_enabled));
-      setAutoLockConfig(freshLockConfig);
-      setAutoLockEnabled(Boolean(freshLockConfig?.is_enabled));
-      setAutoLockIsodow(Number(freshLockConfig?.lock_isodow || 1));
-      setAutoLockTime(freshLockConfig?.lock_time || '00:05');
       setMessage({
         type: 'success',
         text: weekRes?.created_now > 0
           ? 'Đã lưu cấu hình và tự động tạo tuần thi đua hiện tại.'
-          : lockRes?.locked_now > 0
-            ? `Đã lưu cấu hình và tự động khóa ${lockRes.locked_now} tuần đã kết thúc.`
-            : (publishRes.message || 'Đã lưu cấu hình tự động thi đua!')
+          : (publishRes.message || 'Đã lưu cấu hình tự động thi đua!')
       });
       setIsScheduleModalOpen(false);
     } catch (err: any) {
@@ -357,18 +329,6 @@ export default function ProgramAndWeeksTab() {
           console.error('Error loading auto week config:', err);
           setAutoWeekConfig(null);
           setAutoWeekEnabled(false);
-        });
-        competitionService.getAutoLockConfig(selectedYearId).then(cfg => {
-          setAutoLockConfig(cfg);
-          setAutoLockEnabled(Boolean(cfg?.is_enabled));
-          setAutoLockIsodow(Number(cfg?.lock_isodow || 1));
-          setAutoLockTime(cfg?.lock_time || '00:05');
-        }).catch(err => {
-          console.error('Error loading auto lock config:', err);
-          setAutoLockConfig(null);
-          setAutoLockEnabled(false);
-          setAutoLockIsodow(1);
-          setAutoLockTime('00:05');
         });
 
         // Get all programs
@@ -850,9 +810,6 @@ export default function ProgramAndWeeksTab() {
                 setScheduleTimes(autoPublishConfig.publish_times?.length > 0 ? autoPublishConfig.publish_times : ['06:00', '12:00', '18:00']);
               }
               setAutoWeekEnabled(Boolean(autoWeekConfig?.is_enabled));
-              setAutoLockEnabled(Boolean(autoLockConfig?.is_enabled));
-              setAutoLockIsodow(Number(autoLockConfig?.lock_isodow || 1));
-              setAutoLockTime(autoLockConfig?.lock_time || '00:05');
               setIsScheduleModalOpen(true);
             }}
             className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs ${
@@ -1060,10 +1017,11 @@ export default function ProgramAndWeeksTab() {
                     <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px]">
                       <th className="py-3 px-4">Thứ hạng</th>
                       <th className="py-3 px-4">Chi đội</th>
-                      <th className="py-3 px-4 text-center">Ban đầu</th>
-                      <th className="py-3 px-4 text-center">Trừ điểm</th>
-                      <th className="py-3 px-4 text-center">Cộng điểm</th>
-                      <th className="py-3 px-4 text-center">Tổng điểm</th>
+                      <th className="py-3 px-4 text-center">Khởi điểm</th>
+                      <th className="py-3 px-4 text-center text-rose-600">Vi phạm</th>
+                      <th className="py-3 px-4 text-center text-emerald-600">Điểm thưởng</th>
+                      <th className="py-3 px-4 text-center">Điều chỉnh khác</th>
+                      <th className="py-3 px-4 text-center">Tổng</th>
                       <th className="py-3 px-4 min-w-[240px]">Nhận xét thi đua (Nội bộ)</th>
                       <th className="py-3 px-4 text-right">Thao tác</th>
                     </tr>
@@ -1071,7 +1029,7 @@ export default function ProgramAndWeeksTab() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {filteredUnits.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                        <td colSpan={9} className="py-8 text-center text-slate-400 text-xs">
                           Chưa có dữ liệu chi đội cho {selectedGrade === 'ALL' ? 'tuần này' : `Khối ${selectedGrade}`}.
                         </td>
                       </tr>
@@ -1101,11 +1059,18 @@ export default function ProgramAndWeeksTab() {
                           </td>
 
                           <td className="py-3 px-4 text-center text-rose-600 font-bold">
-                            {u.deduction_points ? `-${u.deduction_points}` : 0}
+                            {u.incident_penalty_points ? `-${u.incident_penalty_points}` : 0}
                           </td>
 
                           <td className="py-3 px-4 text-center text-emerald-600 font-bold">
-                            {u.bonus_points ? `+${u.bonus_points}` : 0}
+                            {u.incident_bonus_points ? `+${u.incident_bonus_points}` : 0}
+                          </td>
+
+                          <td className="py-3 px-4 text-center font-bold">
+                            {(() => {
+                              const adjustment = (u.manual_bonus_points ?? 0) - (u.manual_penalty_points ?? 0);
+                              return adjustment > 0 ? `+${adjustment}` : adjustment;
+                            })()}
                           </td>
 
                           <td className="py-3 px-4 text-center font-extrabold text-slate-900 dark:text-white text-sm">
@@ -1553,7 +1518,7 @@ export default function ProgramAndWeeksTab() {
       {/* Auto Publish Schedule Modal */}
       {isScheduleModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3">
@@ -1577,9 +1542,8 @@ export default function ProgramAndWeeksTab() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             {/* Auto-create competition weeks */}
-            <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 space-y-3 h-full">
+            <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <label htmlFor="auto-week-toggle" className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
@@ -1613,71 +1577,6 @@ export default function ProgramAndWeeksTab() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Auto-lock completed competition weeks */}
-            <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/60 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <label htmlFor="auto-lock-toggle" className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
-                    Tự động khóa tuần thi đua
-                  </label>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Đến lịch đã chọn, hệ thống chỉ khóa các tuần đã kết thúc. Nếu cần chỉnh sửa, bạn vẫn có thể mở khóa thủ công; tuần sẽ không bị tự khóa lại cho tới lịch kế tiếp.
-                  </p>
-                </div>
-                <input
-                  id="auto-lock-toggle"
-                  type="checkbox"
-                  checked={autoLockEnabled}
-                  onChange={e => setAutoLockEnabled(e.target.checked)}
-                  className="w-5 h-5 accent-amber-600 rounded-lg cursor-pointer shrink-0"
-                />
-              </div>
-
-              {autoLockEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Thứ tự động khóa</label>
-                    <select
-                      value={autoLockIsodow}
-                      onChange={e => setAutoLockIsodow(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900/60 border border-amber-200 dark:border-amber-900/60 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                      {AUTO_LOCK_DAYS.map(day => (
-                        <option key={day.value} value={day.value}>{day.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Giờ tự động khóa</label>
-                    <input
-                      type="time"
-                      value={autoLockTime}
-                      onChange={e => setAutoLockTime(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900/60 border border-amber-200 dark:border-amber-900/60 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {autoLockEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                  <div className="rounded-xl bg-white/80 dark:bg-slate-900/50 border border-amber-100 dark:border-amber-900/50 px-3 py-2">
-                    <span className="text-slate-500 dark:text-slate-400">Lần tự khóa gần nhất:</span>
-                    <div className="font-bold text-slate-900 dark:text-white mt-0.5">
-                      {formatDateTimeDisplay(autoLockConfig?.last_week_locked_at)}
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-white/80 dark:bg-slate-900/50 border border-amber-100 dark:border-amber-900/50 px-3 py-2">
-                    <span className="text-slate-500 dark:text-slate-400">Lần khóa kế tiếp:</span>
-                    <div className="font-bold text-amber-700 dark:text-amber-300 mt-0.5">
-                      {formatDateTimeDisplay(autoLockConfig?.next_lock_at)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
             </div>
 
             {/* Toggle auto-publish */}

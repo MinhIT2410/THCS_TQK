@@ -571,9 +571,10 @@ export default function WeeklyUnitsTab() {
                       <th className="py-3 px-4 w-16 text-center">Hạng</th>
                       <th className="py-3 px-4">Chi đội</th>
                       <th className="py-3 px-4 text-center">Khởi điểm</th>
-                      <th className="py-3 px-4 text-center text-emerald-600 dark:text-emerald-400">Điểm cộng</th>
-                      <th className="py-3 px-4 text-center text-rose-600 dark:text-rose-400">Điểm trừ</th>
-                      <th className="py-3 px-4 text-center font-black">Điểm hiện tại</th>
+                      <th className="py-3 px-4 text-center text-rose-600 dark:text-rose-400">Vi phạm</th>
+                      <th className="py-3 px-4 text-center text-emerald-600 dark:text-emerald-400">Điểm thưởng</th>
+                      <th className="py-3 px-4 text-center">Điều chỉnh khác</th>
+                      <th className="py-3 px-4 text-center font-black">Tổng</th>
                       <th className="py-3 px-4">Nhận xét</th>
                       <th className="py-3 px-4 text-right">Thao tác</th>
                     </tr>
@@ -609,11 +610,17 @@ export default function WeeklyUnitsTab() {
                           <td className="py-3.5 px-4 text-center font-mono text-slate-500">
                             {unit.starting_points ?? 100}
                           </td>
-                          <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            {unit.total_bonus ? `+${unit.total_bonus}` : 0}
-                          </td>
                           <td className="py-3.5 px-4 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
-                            {unit.total_penalty ? `-${unit.total_penalty}` : 0}
+                            {unit.incident_penalty_points ? `-${unit.incident_penalty_points}` : 0}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            {unit.incident_bonus_points ? `+${unit.incident_bonus_points}` : 0}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {(() => {
+                              const adjustment = (unit.manual_bonus_points ?? 0) - (unit.manual_penalty_points ?? 0);
+                              return adjustment > 0 ? `+${adjustment}` : adjustment;
+                            })()}
                           </td>
                           <td className="py-3.5 px-4 text-center">
                             <span className="font-mono font-black text-sm px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200/60 dark:border-slate-700">
