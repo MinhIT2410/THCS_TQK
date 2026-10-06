@@ -1553,7 +1553,7 @@ export default function ProgramAndWeeksTab() {
       {/* Auto Publish Schedule Modal */}
       {isScheduleModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3">
@@ -1577,8 +1577,9 @@ export default function ProgramAndWeeksTab() {
               </button>
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             {/* Auto-create competition weeks */}
-            <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 space-y-3">
+            <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 space-y-3 h-full">
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <label htmlFor="auto-week-toggle" className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
@@ -1676,6 +1677,7 @@ export default function ProgramAndWeeksTab() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
 
             {/* Toggle auto-publish */}
