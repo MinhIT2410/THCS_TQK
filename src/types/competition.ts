@@ -438,16 +438,6 @@ export interface CompetitionAutoWeekConfig {
   next_week_ends_on?: string | null;
 }
 
-export interface CompetitionAutoLockConfig {
-  academic_year_id: string;
-  is_enabled: boolean;
-  lock_isodow: number;
-  lock_time: string;
-  last_auto_lock_run_at?: string | null;
-  last_week_locked_at?: string | null;
-  next_lock_at?: string | null;
-}
-
 export interface WeeklyReportRuleStat {
   rule_id: string;
   rule_name: string;
@@ -462,6 +452,8 @@ export interface FormattedStudentViolationGroup {
     ruleName: string;
     count: number;
     occurrencesStr: string;
+    /** Ghi chú của giám thị/người ghi nhận, gom duy nhất theo cùng học sinh + lỗi. */
+    notes?: string[];
   }[];
 }
 

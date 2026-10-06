@@ -104,6 +104,7 @@ export function groupIncidentsByStudentAndRule(classIncidents: CompetitionIncide
     const ruleMap = new Map<string, {
       ruleName: string;
       times: Date[];
+      notes: string[];
     }>();
 
     sGroup.incidents.forEach(inc => {
@@ -111,11 +112,20 @@ export function groupIncidentsByStudentAndRule(classIncidents: CompetitionIncide
       const rName = inc.rule_name || inc.rule?.name || inc.title || 'Lỗi vi phạm';
 
       if (!ruleMap.has(rKey)) {
-        ruleMap.set(rKey, { ruleName: rName, times: [] });
+        ruleMap.set(rKey, { ruleName: rName, times: [], notes: [] });
       }
 
+      const currentRule = ruleMap.get(rKey)!;
+
       if (inc.occurred_at) {
-        ruleMap.get(rKey)!.times.push(new Date(inc.occurred_at));
+        currentRule.times.push(new Date(inc.occurred_at));
+      }
+
+      // Ghi chú lỗi do giám thị/người ghi nhận nhập khi tạo sự việc.
+      // Chỉ giữ ghi chú có nội dung và loại bỏ bản trùng để báo cáo gọn.
+      const note = inc.evidence_note?.trim();
+      if (note && !currentRule.notes.includes(note)) {
+        currentRule.notes.push(note);
       }
     });
 
@@ -135,7 +145,8 @@ export function groupIncidentsByStudentAndRule(classIncidents: CompetitionIncide
       rulesList.push({
         ruleName: rGroup.ruleName,
         count: rGroup.times.length || 1,
-        occurrencesStr: formattedTimes || '---'
+        occurrencesStr: formattedTimes || '---',
+        notes: rGroup.notes
       });
     });
 

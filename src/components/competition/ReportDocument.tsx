@@ -153,6 +153,11 @@ export const ReportDocument = forwardRef<HTMLDivElement, ReportDocumentProps>(({
                                     <span className="font-semibold text-slate-800">{r.ruleName}:</span>{' '}
                                     <span className="font-bold text-rose-700">{r.count} lần</span> —{' '}
                                     <span className="font-mono text-[11px] text-slate-600">{r.occurrencesStr}</span>
+                                    {r.notes && r.notes.length > 0 ? (
+                                      <span className="ml-1 text-slate-600 italic">
+                                        ({r.notes.length === 1 ? r.notes[0] : r.notes.join('; ')})
+                                      </span>
+                                    ) : null}
                                   </li>
                                 ))}
                               </ul>

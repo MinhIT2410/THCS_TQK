@@ -1,36 +1,31 @@
-# PATCH - PDF dạng bảng, bám sát bản xem/lưu trên web
+# PATCH - Hiển thị ghi chú lỗi trong báo cáo thống kê
 
-## Mục tiêu
-Giữ ưu điểm PDF nhẹ, nhưng làm bản PDF nhìn giống modal báo cáo đã lưu nhất có thể:
-- bảng có khung rõ,
-- header xám nhạt,
-- từng ô có đường viền,
-- padding/line-height giống bản web,
-- các dòng không còn cảm giác thành một danh sách chữ liên tục.
+## Yêu cầu
+Nếu một ghi nhận vi phạm có phần ghi chú do giám thị/người ghi nhận nhập, báo cáo sẽ hiển thị thêm ghi chú trong ngoặc ngay sau lỗi.
 
-## Thay đổi
-### `src/utils/reportPdfExporter.ts`
-- Không ép clone về width 794px nữa; giữ width gần với ReportDocument đang xem.
-- Materialize style bảng trước khi chụp:
-  - `border-collapse`
-  - border cho table/th/td
-  - nền header
-  - padding 10px
-  - line-height 1.35–1.45
-  - tránh cắt row giữa trang
-- Giữ PDF nhẹ: scale 1.5, JPEG quality 0.90, jsPDF compression.
+Ví dụ:
+`Đi học trễ: 1 lần — 05/10 07:01 (Đến cổng sau khi trống vào lớp)`
 
-### `src/components/competition/SaveExportReportCard.tsx`
-- Container ẩn dùng để xuất snapshot: `800px -> 848px`
-- Gần với chiều rộng thực của phần ReportDocument trong modal `max-w-4xl`.
+Nếu cùng học sinh + cùng lỗi có nhiều ghi chú khác nhau:
+`... (Quên phù hiệu; Không mang khăn quàng)`
 
-## Không thay đổi
-- Dữ liệu báo cáo
-- DB / Supabase
-- Snapshot
-- Logic lưu báo cáo
-- UI modal trên web
+## Cách hoạt động
+- Lấy trực tiếp `competition_incidents.evidence_note` đã có sẵn.
+- Gom theo Học sinh + Quy tắc như báo cáo hiện tại.
+- Bỏ ghi chú rỗng.
+- Loại bỏ ghi chú trùng.
+- Snapshot mới lưu `notes` cùng `class_report_rows`.
+- Snapshot cũ không có `notes` vẫn mở bình thường vì field là optional.
 
-## Triển khai
-Copy đè 2 file, commit/push Vercel.
-Không cần SQL hoặc Edge Function.
+## File thay đổi
+- `src/components/competition/SaveExportReportCard.tsx`
+- `src/components/competition/ReportDocument.tsx`
+- `src/types/competition.ts`
+
+## Không cần
+- Không SQL migration
+- Không Edge Function
+- Không thay đổi bảng DB
+
+## Lưu ý
+Patch `SaveExportReportCard.tsx` này đã giữ luôn thay đổi width 848px của bản PDF dạng bảng trước đó, nên copy đè không làm mất tối ưu PDF vừa chốt.
