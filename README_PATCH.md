@@ -1,54 +1,43 @@
-# PATCH - Nhập lại giáo viên không trùng + gán GVCN + mật khẩu mặc định
+# PATCH V2 - Nhập lại GVCN + đặt lại mật khẩu mặc định theo lớp
 
-## Phạm vi
-Patch chỉ sửa luồng nhập tài khoản Giáo viên/Cán bộ từ Excel.
+## Vì sao file kết quả trước đó không có `gvcn@61`?
+Các dòng trong ảnh của bạn là `UPDATED`: tài khoản đã tồn tại.
+Patch trước cố tình **giữ nguyên mật khẩu của tài khoản cũ**, nên cột Mật khẩu tạm để trống.
 
-## Hành vi mới
+## Bản V2 này thay đổi gì?
+Trong bước Xem trước của import Giáo viên/Cán bộ có checkbox:
 
-### 1) Lấy lớp của giáo viên từ file
-- `roles` có `TEACHER`
-- Nếu có `class_name`, hệ thống resolve lớp và hiểu đó là **lớp chủ nhiệm**.
-- Nếu `academic_year_name` bỏ trống, hệ thống tự dùng năm học hiện tại khi chỉ có đúng một năm đang active.
-- STAFF không có vai trò TEACHER thì không được gán lớp chủ nhiệm.
+**Đặt lại mật khẩu GVCN đã có theo lớp**
 
-### 2) Nhập lại file không tạo trùng
-Theo email:
-- Email chưa có: tạo mới.
-- Email đã có: không tạo Auth user mới, không reset mật khẩu.
-- Bổ sung role còn thiếu, cập nhật họ tên nếu thay đổi.
-- Nếu đúng GVCN đúng lớp: SKIPPED, không tạo assignment trùng.
-- Nếu cần gán lớp lần đầu: UPDATED.
-- Nếu lớp đang có GVCN khác: CONFLICT, không ghi đè.
-- Nếu giáo viên đang chủ nhiệm một lớp khác trong cùng năm: CONFLICT, không tự chuyển lớp.
+Mặc định: **BẬT**.
 
-### 3) Mật khẩu mặc định cho GVCN mới
-Chỉ áp dụng khi tạo **tài khoản TEACHER mới có lớp chủ nhiệm**:
-- Lớp `6/1` -> `gvcn@61`
-- Lớp `6/10` -> `gvcn@610`
-- Lớp phân hiệu `6.1` -> `gvcn@6.1`
+Khi bật:
+- Tài khoản chưa có -> tạo mới như trước.
+- Tài khoản đã có -> không tạo trùng.
+- Nếu là TEACHER có `class_name`, gán/kiểm tra GVCN như trước.
+- Sau đó đặt lại mật khẩu theo lớp:
+  - `6/1` -> `gvcn@61`
+  - `6/10` -> `gvcn@610`
+  - `6.1` -> `gvcn@6.1`
+- File kết quả sẽ hiện mật khẩu vừa đặt lại ở cột `Mật khẩu tạm`.
+- Nếu lớp đang có GVCN khác hoặc giáo viên đang chủ nhiệm lớp khác -> CONFLICT, không reset mật khẩu.
 
-Dấu chấm được giữ lại để tránh `6/1` và `6.1` dùng cùng mật khẩu.
+Khi tắt checkbox:
+- Hành vi như patch trước: tài khoản cũ giữ nguyên mật khẩu.
 
-Tài khoản đã tồn tại khi nhập lại file: **không đổi/reset mật khẩu**.
+## File thay đổi
+- `src/features/users/import/UserImportModal.tsx`
+- `src/features/users/userCreationApi.ts`
+- `src/features/users/import/userImportParser.ts`
+- `src/features/users/import/userImportTemplate.ts`
+- `src/features/users/import/userImportTypes.ts`
+- `supabase/functions/admin-create-users/index.ts`
 
-### 4) Kết quả import rõ trạng thái
-- CREATED = Tạo mới
-- UPDATED = Cập nhật/gán thêm
-- SKIPPED = Đã có, không làm lại
-- CONFLICT = Xung đột GVCN, không ghi đè
-- FAILED = Lỗi
+## Triển khai
+1. Copy đè các file theo đúng đường dẫn.
+2. Commit/push để Vercel deploy.
+3. Deploy lại **Supabase Edge Function `admin-create-users`**.
+4. Không cần chạy migration SQL.
 
-## Cách triển khai
-
-1. Copy đè đúng các file trong patch vào repo hiện tại.
-2. Commit/push để Vercel build frontend.
-3. QUAN TRỌNG: deploy lại Supabase Edge Function `admin-create-users`.
-   - Dashboard Supabase -> Edge Functions -> `admin-create-users`
-   - Deploy source mới, hoặc dùng Supabase CLI nếu repo của bạn đang deploy function bằng CLI.
-4. Không có migration SQL mới trong patch này.
-
-## Lưu ý an toàn
-- Không xóa account cũ.
-- Không reset password khi nhập lại.
-- Không tự ghi đè GVCN hiện có.
-- Student import giữ logic cũ.
+## Lưu ý bảo mật
+Mật khẩu theo lớp rất dễ nhớ nhưng cũng dễ đoán. Sau khi phát tài khoản, nên yêu cầu giáo viên đổi mật khẩu cá nhân sau lần đăng nhập đầu tiên nếu hệ thống đã có luồng đổi mật khẩu.

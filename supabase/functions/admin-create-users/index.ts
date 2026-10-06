@@ -467,7 +467,8 @@ async function processSingleUser(
   supabaseUser: any,
   supabaseAdmin: any,
   studentDomain: string,
-  existingByEmail?: Map<string, ExistingAuthUser>
+  existingByEmail?: Map<string, ExistingAuthUser>,
+  resetExistingTeacherPasswords = false
 ): Promise<ProcessResult> {
   const rowNum = user.row_number;
   const rawEmail = (user.email || "").trim().toLowerCase();
@@ -555,17 +556,40 @@ async function processSingleUser(
       }
     }
 
-    const changed = basic.changed || assignmentStatus === "CREATED";
+    let resetPassword: string | undefined;
+    if (resetExistingTeacherPasswords && isTeacher && classId) {
+      resetPassword = await generatePasswordForUser(roles, classId, supabaseAdmin);
+      const { error: resetError } = await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
+        password: resetPassword,
+      });
+      if (resetError) {
+        console.error("Error resetting existing teacher password:", resetError);
+        return {
+          row_number: rowNum,
+          email: rawEmail,
+          success: false,
+          status: "FAILED",
+          user_id: existingAuthUser.id,
+          error_code: "PASSWORD_RESET_FAILED",
+          error: "Đã cập nhật tài khoản/lớp nhưng không thể đặt lại mật khẩu GVCN.",
+        };
+      }
+    }
+
+    const changed = basic.changed || assignmentStatus === "CREATED" || !!resetPassword;
     const status: ImportStatus = changed ? "UPDATED" : "SKIPPED";
+    const passwordMessage = resetPassword
+      ? ` Mật khẩu đã được đặt lại thành ${resetPassword}.`
+      : " Mật khẩu hiện tại được giữ nguyên.";
     const message = changed
-      ? `Tài khoản đã tồn tại; đã cập nhật thông tin${assignmentMessage ? `; ${assignmentMessage}` : ""}. Mật khẩu hiện tại được giữ nguyên.`
-      : `Tài khoản đã tồn tại; không tạo trùng${assignmentMessage ? `; ${assignmentMessage}` : ""}. Mật khẩu hiện tại được giữ nguyên.`;
+      ? `Tài khoản đã tồn tại; đã cập nhật thông tin${assignmentMessage ? `; ${assignmentMessage}` : ""}.${passwordMessage}`
+      : `Tài khoản đã tồn tại; không tạo trùng${assignmentMessage ? `; ${assignmentMessage}` : ""}.${passwordMessage}`;
 
     return {
       row_number: rowNum,
       email: rawEmail,
       login_identifier: rawEmail,
-      temporary_password: undefined,
+      temporary_password: resetPassword,
       success: true,
       status,
       user_id: existingAuthUser.id,
@@ -880,7 +904,15 @@ Deno.serve(async (req) => {
         supabaseAdmin,
         userInput?.email ? [String(userInput.email)] : []
       );
-      const result = await processSingleUser(userInput, callerId, supabaseUser, supabaseAdmin, studentDomain, existingByEmail);
+      const result = await processSingleUser(
+        userInput,
+        callerId,
+        supabaseUser,
+        supabaseAdmin,
+        studentDomain,
+        existingByEmail,
+        body?.reset_existing_teacher_passwords === true
+      );
 
       if (!result.success) {
         const status = result.error_code === "FORBIDDEN" ? 403 : result.status === "CONFLICT" ? 409 : 400;
@@ -915,6 +947,7 @@ Deno.serve(async (req) => {
     // ==========================================
     if (action === "create_many") {
       const { users } = body;
+      const resetExistingTeacherPasswords = body?.reset_existing_teacher_passwords === true;
       if (!users || !Array.isArray(users)) {
         return new Response(
           JSON.stringify({
@@ -1017,7 +1050,15 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const res = await processSingleUser(u, callerId, supabaseUser, supabaseAdmin, studentDomain, existingByEmail);
+        const res = await processSingleUser(
+          u,
+          callerId,
+          supabaseUser,
+          supabaseAdmin,
+          studentDomain,
+          existingByEmail,
+          resetExistingTeacherPasswords
+        );
         results.push({
           row_number: rowNum,
           email: u.email || undefined,

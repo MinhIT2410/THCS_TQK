@@ -45,10 +45,11 @@ export const userCreationApi = {
   /**
    * Invoke Edge Function to create multiple users.
    */
-  async createManyUsers(users: any[]) {
+  async createManyUsers(users: any[], options?: { resetExistingTeacherPasswords?: boolean }) {
     const { data, error } = await supabase.functions.invoke('admin-create-users', {
       body: {
         action: 'create_many',
+        reset_existing_teacher_passwords: options?.resetExistingTeacherPasswords === true,
         users: users.map(u => ({
           row_number: u.row_number,
           full_name: u.full_name,

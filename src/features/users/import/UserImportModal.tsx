@@ -35,6 +35,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
   const [importMode, setImportMode] = useState<UserImportMode>('STUDENT');
   const [validatedRows, setValidatedRows] = useState<ValidatedImportRow[]>([]);
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [resetExistingTeacherPasswords, setResetExistingTeacherPasswords] = useState(true);
   
   // Configuration states (classes/academic years)
   const [classes, setClasses] = useState<any[]>([]);
@@ -55,6 +56,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
       setFileName('');
       setValidatedRows([]);
       setImportResults([]);
+      setResetExistingTeacherPasswords(true);
       setGeneralError(null);
       setConfigError(null);
 
@@ -162,7 +164,9 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
     setGeneralError(null);
 
     try {
-      const result = await userCreationApi.createManyUsers(validRowsToSubmit);
+      const result = await userCreationApi.createManyUsers(validRowsToSubmit, {
+        resetExistingTeacherPasswords: importMode === 'STAFF' && resetExistingTeacherPasswords
+      });
       
       if (result && result.success === false) {
         setGeneralError(result.message || "Có lỗi xảy ra trong quá trình xử lý.");
@@ -427,6 +431,27 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                 </div>
               </div>
 
+              {importMode === 'STAFF' && (
+                <label className="flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/15 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={resetExistingTeacherPasswords}
+                    onChange={(e) => setResetExistingTeacherPasswords(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                      Đặt lại mật khẩu GVCN đã có theo lớp
+                    </div>
+                    <div className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-400">
+                      Khi bật: tài khoản TEACHER đã tồn tại và có lớp chủ nhiệm sẽ được đặt lại mật khẩu theo mẫu
+                      <span className="font-mono font-bold"> gvcn@61, gvcn@610, gvcn@6.1...</span>.
+                      File kết quả sẽ xuất mật khẩu này. Tắt mục này nếu chỉ muốn cập nhật lớp/thông tin mà giữ mật khẩu hiện tại.
+                    </div>
+                  </div>
+                </label>
+              )}
+
               {/* Data Table */}
               <div className="border border-slate-150 dark:border-slate-850 rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
                 <div className="overflow-x-auto max-h-[350px]">
@@ -506,7 +531,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                 <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-450" />
                 <h3 className="text-sm font-bold text-slate-950 dark:text-white">Hoàn tất xử lý yêu cầu!</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-lg leading-relaxed">
-                  Đã hoàn tất xử lý. Tài khoản mới sẽ hiển thị mật khẩu tạm. Khi nhập lại email đã có, hệ thống không tạo trùng và không reset mật khẩu; chỉ cập nhật thông tin/gán lớp khi cần. Xung đột GVCN sẽ được báo riêng và không tự ghi đè.
+                  Đã hoàn tất xử lý. Tài khoản mới sẽ hiển thị mật khẩu tạm. Với Giáo viên/Cán bộ, nếu bạn bật “Đặt lại mật khẩu GVCN đã có theo lớp”, tài khoản TEACHER hiện có sẽ được đặt lại mật khẩu dạng gvcn@61 và file kết quả sẽ hiển thị mật khẩu mới. Hệ thống vẫn không tạo tài khoản trùng và không tự ghi đè GVCN đang xung đột.
                 </p>
               </div>
 
