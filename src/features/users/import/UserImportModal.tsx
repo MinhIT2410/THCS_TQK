@@ -174,7 +174,8 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
           email: r.email || validRowsToSubmit.find(v => v.row_number === r.row_number)?.email || '',
           student_code: r.student_code || validRowsToSubmit.find(v => v.row_number === r.row_number)?.student_code || '',
           success: r.success,
-          message: r.error || (r.success ? 'Tạo thành công' : 'Thất bại'),
+          status: r.status || (r.success ? 'CREATED' : 'FAILED'),
+          message: r.message || r.error || (r.success ? 'Tạo thành công' : 'Thất bại'),
           user_id: r.user_id,
           login_identifier: r.login_identifier || '',
           temporary_password: r.temporary_password || ''
@@ -203,7 +204,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
       'student_code': r.student_code || '',
       'login_identifier': r.login_identifier || '',
       'temporary_password': r.temporary_password || '',
-      'Trạng thái': r.success ? 'Thành công' : 'Thất bại',
+      'Trạng thái': r.status || (r.success ? 'CREATED' : 'FAILED'),
       'Chi tiết': r.message || ''
     }));
 
@@ -505,7 +506,7 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                 <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-450" />
                 <h3 className="text-sm font-bold text-slate-950 dark:text-white">Hoàn tất xử lý yêu cầu!</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-lg leading-relaxed">
-                  Đã hoàn tất tiến trình khởi tạo. Các tài khoản có email sẽ nhận được thư điện tử mời kích hoạt. Với học sinh không email, vui lòng lưu lại Mã học sinh, Tên đăng nhập và Mật khẩu tạm thời hiển thị bên dưới.
+                  Đã hoàn tất xử lý. Tài khoản mới sẽ hiển thị mật khẩu tạm. Khi nhập lại email đã có, hệ thống không tạo trùng và không reset mật khẩu; chỉ cập nhật thông tin/gán lớp khi cần. Xung đột GVCN sẽ được báo riêng và không tự ghi đè.
                 </p>
               </div>
 
@@ -552,17 +553,21 @@ export const UserImportModal: React.FC<UserImportModalProps> = ({
                             {row.temporary_password || <span className="text-slate-300">-</span>}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {row.success ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
-                                Thành công
-                              </span>
+                            {row.status === 'CREATED' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">Tạo mới</span>
+                            ) : row.status === 'UPDATED' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400">Cập nhật</span>
+                            ) : row.status === 'SKIPPED' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">Đã có</span>
+                            ) : row.status === 'CONFLICT' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">Xung đột</span>
+                            ) : row.success ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">Thành công</span>
                             ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400">
-                                Thất bại
-                              </span>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400">Thất bại</span>
                             )}
                           </td>
-                          <td className={`px-4 py-3 font-bold ${row.success ? 'text-emerald-600 dark:text-emerald-450' : 'text-red-600 dark:text-red-450'}`}>
+                          <td className={`px-4 py-3 font-bold ${row.status === 'CONFLICT' ? 'text-amber-700 dark:text-amber-400' : row.success ? 'text-emerald-600 dark:text-emerald-450' : 'text-red-600 dark:text-red-450'}`}>
                             {row.message}
                           </td>
                         </tr>

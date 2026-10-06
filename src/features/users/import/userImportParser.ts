@@ -195,16 +195,24 @@ export const validateImportRows = (
       }
     }
 
-    // 5. Student specific requirements - class_name and academic_year_name resolution
+    // 5. Resolve class / academic year for students and homeroom teachers.
+    //    - STUDENT: class + academic year are mandatory.
+    //    - TEACHER: class is optional; when supplied it means homeroom assignment.
+    //      Academic year may be omitted and will fall back to the single active year.
     let classId: string | null = null;
     let className: string | null = null;
     let academicYearId: string | null = null;
     let academicYearName: string | null = null;
 
-    if (isStudent) {
-      const rawClassName = r.class_name?.trim();
-      const rawClassId = r.class_id?.trim();
+    const isTeacher = validRoles.includes('TEACHER');
+    const rawClassName = r.class_name?.trim();
+    const rawClassId = r.class_id?.trim();
+    const rawYearName = r.academic_year_name?.trim();
+    const rawYearId = r.academic_year_id?.trim();
+    const hasClassInput = !!rawClassName || !!rawClassId;
+    const hasYearInput = !!rawYearName || !!rawYearId;
 
+    const resolveClass = () => {
       if (rawClassName) {
         const matchedClasses = classes.filter(
           (c) => c.name?.trim().toLowerCase() === rawClassName.toLowerCase()
@@ -216,10 +224,9 @@ export const validateImportRows = (
           classId = matchedClasses[0].id;
           className = matchedClasses[0].name;
         } else {
-          // Fallback check to UUID if rawClassId exists and matches
           const matchedClassById = rawClassId ? classes.find((c) => c.id === rawClassId) : null;
           if (matchedClassById) {
-            classId = rawClassId;
+            classId = rawClassId || null;
             className = matchedClassById.name;
           } else {
             errors.push(`Không tìm thấy lớp ‘${rawClassName}’ trong hệ thống.`);
@@ -233,13 +240,10 @@ export const validateImportRows = (
         } else {
           errors.push(`Mã lớp học (class_id) '${rawClassId}' không tồn tại trong hệ thống.`);
         }
-      } else {
-        errors.push('Học sinh bắt buộc phải điền Tên lớp học (class_name).');
       }
+    };
 
-      const rawYearName = r.academic_year_name?.trim();
-      const rawYearId = r.academic_year_id?.trim();
-
+    const resolveAcademicYear = (allowActiveFallback: boolean) => {
       if (rawYearName) {
         const matchedYears = academicYears.filter(
           (y) => y.name?.trim().toLowerCase() === rawYearName.toLowerCase()
@@ -251,10 +255,9 @@ export const validateImportRows = (
           academicYearId = matchedYears[0].id;
           academicYearName = matchedYears[0].name;
         } else {
-          // Fallback check to UUID if rawYearId exists and matches
           const matchedYearById = rawYearId ? academicYears.find((y) => y.id === rawYearId) : null;
           if (matchedYearById) {
-            academicYearId = rawYearId;
+            academicYearId = rawYearId || null;
             academicYearName = matchedYearById.name;
           } else {
             errors.push(`Không tìm thấy năm học ‘${rawYearName}’ trong hệ thống.`);
@@ -268,9 +271,41 @@ export const validateImportRows = (
         } else {
           errors.push(`Mã năm học (academic_year_id) '${rawYearId}' không tồn tại trong hệ thống.`);
         }
+      } else if (allowActiveFallback) {
+        const activeYears = academicYears.filter((y) => y.is_active === true || y.is_current === true);
+        if (activeYears.length === 1) {
+          academicYearId = activeYears[0].id;
+          academicYearName = activeYears[0].name;
+        } else if (activeYears.length > 1) {
+          errors.push('Có nhiều năm học đang được đánh dấu hiện tại. Vui lòng điền rõ Tên năm học (academic_year_name).');
+        }
+      }
+    };
+
+    if (isStudent) {
+      if (!hasClassInput) {
+        errors.push('Học sinh bắt buộc phải điền Tên lớp học (class_name).');
       } else {
+        resolveClass();
+      }
+
+      resolveAcademicYear(false);
+      if (!hasYearInput) {
         errors.push('Học sinh bắt buộc phải điền Tên năm học (academic_year_name).');
       }
+    } else if (isTeacher) {
+      if (hasClassInput) {
+        resolveClass();
+        resolveAcademicYear(true);
+        if (!academicYearId) {
+          errors.push('Giáo viên có khai báo lớp chủ nhiệm phải có Năm học, hoặc hệ thống phải có đúng một năm học hiện tại.');
+        }
+      } else if (hasYearInput) {
+        // A year without a class does not create a homeroom assignment; resolve it only for display/consistency.
+        resolveAcademicYear(false);
+      }
+    } else if (hasClassInput || hasYearInput) {
+      errors.push('Chỉ STUDENT hoặc TEACHER mới được khai báo lớp/năm học trong file nhập tài khoản.');
     }
 
     return {

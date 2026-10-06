@@ -31,12 +31,15 @@ export interface ValidatedImportRow {
   errors: string[];
 }
 
+export type ImportRowStatus = 'CREATED' | 'UPDATED' | 'SKIPPED' | 'CONFLICT' | 'FAILED';
+
 export interface ImportResult {
   row_number: number;
   full_name: string;
   email?: string;
   student_code?: string;
   success: boolean;
+  status?: ImportRowStatus;
   message?: string;
   user_id?: string;
   login_identifier?: string;

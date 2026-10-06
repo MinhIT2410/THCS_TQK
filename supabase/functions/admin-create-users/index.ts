@@ -29,6 +29,8 @@ interface UserInput {
   academic_year_id?: string | null;
 }
 
+type ImportStatus = "CREATED" | "UPDATED" | "SKIPPED" | "CONFLICT" | "FAILED";
+
 interface ProcessResult {
   row_number?: number;
   email?: string;
@@ -36,9 +38,17 @@ interface ProcessResult {
   login_identifier?: string;
   temporary_password?: string;
   success: boolean;
+  status?: ImportStatus;
   user_id?: string;
   error_code?: string;
   error?: string;
+  message?: string;
+}
+
+interface ExistingAuthUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, any>;
 }
 
 interface ValidationResult {
@@ -116,6 +126,9 @@ function validateUserData(user: any): ValidationResult {
     }
   }
 
+  const isTeacher = roles.includes("TEACHER");
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   if (isStudent) {
     if (!user.class_id) {
       return { isValid: false, error_code: "VALIDATION_ERROR", message: "Lớp học (class_id) là bắt buộc đối với vai trò Học sinh." };
@@ -123,14 +136,17 @@ function validateUserData(user: any): ValidationResult {
     if (!user.academic_year_id) {
       return { isValid: false, error_code: "VALIDATION_ERROR", message: "Năm học (academic_year_id) là bắt buộc đối với vai trò Học sinh." };
     }
+  }
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(user.class_id)) {
-      return { isValid: false, error_code: "VALIDATION_ERROR", message: "class_id phải là định dạng UUID hợp lệ." };
-    }
-    if (!uuidRegex.test(user.academic_year_id)) {
-      return { isValid: false, error_code: "VALIDATION_ERROR", message: "academic_year_id phải là định dạng UUID hợp lệ." };
-    }
+  if (isTeacher && user.class_id && !user.academic_year_id) {
+    return { isValid: false, error_code: "VALIDATION_ERROR", message: "Giáo viên có lớp chủ nhiệm phải có academic_year_id." };
+  }
+
+  if (user.class_id && !uuidRegex.test(user.class_id)) {
+    return { isValid: false, error_code: "VALIDATION_ERROR", message: "class_id phải là định dạng UUID hợp lệ." };
+  }
+  if (user.academic_year_id && !uuidRegex.test(user.academic_year_id)) {
+    return { isValid: false, error_code: "VALIDATION_ERROR", message: "academic_year_id phải là định dạng UUID hợp lệ." };
   }
 
   return { isValid: true };
@@ -183,12 +199,275 @@ function generateTemporaryPassword(): string {
   return passwordArray.join("");
 }
 
+
+function classNameToTeacherPasswordToken(className: string): string {
+  // Preserve a dot so branch-class names like "6.1" remain distinguishable from "6/1".
+  // Main-site classes such as "6/1" become "61", matching the requested gvcn@61 format.
+  const normalized = className
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/\//g, "")
+    .replace(/[^a-z0-9.]/g, "");
+  return normalized || "lop";
+}
+
+async function generatePasswordForUser(
+  roles: string[],
+  classId: string | null,
+  supabaseAdmin: any
+): Promise<string> {
+  if (roles.includes("TEACHER") && classId) {
+    const { data: classRow, error } = await supabaseAdmin
+      .from("classes")
+      .select("name")
+      .eq("id", classId)
+      .maybeSingle();
+
+    if (!error && classRow?.name) {
+      return `gvcn@${classNameToTeacherPasswordToken(classRow.name)}`;
+    }
+  }
+  return generateTemporaryPassword();
+}
+
+async function loadExistingUsersByEmail(
+  supabaseAdmin: any,
+  requestedEmails: string[]
+): Promise<Map<string, ExistingAuthUser>> {
+  const targets = new Set(requestedEmails.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  const found = new Map<string, ExistingAuthUser>();
+  if (targets.size === 0) return found;
+
+  const perPage = 1000;
+  for (let page = 1; page <= 100 && found.size < targets.size; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      console.error("Unable to scan existing auth users:", error);
+      break;
+    }
+
+    const users = data?.users || [];
+    for (const u of users) {
+      const email = (u.email || "").trim().toLowerCase();
+      if (email && targets.has(email)) {
+        found.set(email, { id: u.id, email: u.email, user_metadata: u.user_metadata || {} });
+      }
+    }
+
+    if (users.length < perPage) break;
+  }
+
+  return found;
+}
+
+async function ensureExistingUserBasics(
+  userId: string,
+  fullName: string,
+  roles: string[],
+  callerId: string,
+  supabaseAdmin: any
+): Promise<{ changed: boolean; error?: string }> {
+  let changed = false;
+
+  const { data: profile, error: profileReadError } = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, is_active")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileReadError) {
+    console.error("Error reading existing profile:", profileReadError);
+    return { changed: false, error: "Không đọc được hồ sơ tài khoản hiện có." };
+  }
+
+  if (!profile) {
+    const { error: insertProfileError } = await supabaseAdmin.from("profiles").insert({
+      id: userId,
+      full_name: fullName,
+      role: "viewer",
+      is_active: true,
+    });
+    if (insertProfileError) {
+      console.error("Error restoring missing profile:", insertProfileError);
+      return { changed: false, error: "Không thể tạo hồ sơ cho tài khoản đã tồn tại." };
+    }
+    changed = true;
+  } else {
+    const patch: Record<string, any> = {};
+    if (fullName && profile.full_name !== fullName) patch.full_name = fullName;
+    if (profile.is_active !== true) patch.is_active = true;
+    if (Object.keys(patch).length > 0) {
+      const { error: updateProfileError } = await supabaseAdmin
+        .from("profiles")
+        .update(patch)
+        .eq("id", userId);
+      if (updateProfileError) {
+        console.error("Error updating existing profile:", updateProfileError);
+        return { changed: false, error: "Không thể cập nhật hồ sơ tài khoản đã tồn tại." };
+      }
+      changed = true;
+    }
+  }
+
+  const { data: existingRoles, error: rolesReadError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role_code")
+    .eq("user_id", userId);
+
+  if (rolesReadError) {
+    console.error("Error reading existing roles:", rolesReadError);
+    return { changed, error: "Không đọc được vai trò của tài khoản hiện có." };
+  }
+
+  const roleSet = new Set((existingRoles || []).map((r: any) => r.role_code));
+  const missingRoles = roles.filter((r) => !roleSet.has(r));
+  if (missingRoles.length > 0) {
+    const { error: roleInsertError } = await supabaseAdmin.from("user_roles").insert(
+      missingRoles.map((roleCode) => ({
+        user_id: userId,
+        role_code: roleCode,
+        created_by: callerId,
+      }))
+    );
+    if (roleInsertError) {
+      console.error("Error adding roles to existing user:", roleInsertError);
+      return { changed, error: "Không thể bổ sung vai trò cho tài khoản đã tồn tại." };
+    }
+    changed = true;
+  }
+
+  return { changed };
+}
+
+
+async function checkHomeroomClassAvailability(
+  classId: string | null,
+  academicYearId: string | null,
+  supabaseAdmin: any
+): Promise<{ available: boolean; message?: string }> {
+  if (!classId || !academicYearId) return { available: true };
+
+  const { data: classRow } = await supabaseAdmin.from("classes").select("name").eq("id", classId).maybeSingle();
+  const className = classRow?.name || "lớp đã chọn";
+  const { data: activeForClass, error } = await supabaseAdmin
+    .from("homeroom_assignments")
+    .select("teacher_id")
+    .eq("class_id", classId)
+    .eq("academic_year_id", academicYearId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error prechecking homeroom class:", error);
+    return { available: false, message: `Không kiểm tra được GVCN hiện tại của lớp ${className}.` };
+  }
+  if (!activeForClass?.teacher_id) return { available: true };
+
+  const { data: teacher } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", activeForClass.teacher_id)
+    .maybeSingle();
+  return {
+    available: false,
+    message: `Lớp ${className} đang có GVCN${teacher?.full_name ? `: ${teacher.full_name}` : " khác"}. Hệ thống không tạo tài khoản/gán đè từ file nhập.`,
+  };
+}
+
+async function ensureHomeroomAssignment(
+  teacherId: string,
+  classId: string | null,
+  academicYearId: string | null,
+  supabaseAdmin: any
+): Promise<{ status: "NONE" | "CREATED" | "EXISTS" | "CONFLICT"; message?: string }> {
+  if (!classId || !academicYearId) return { status: "NONE" };
+
+  const { data: classRow } = await supabaseAdmin
+    .from("classes")
+    .select("id, name")
+    .eq("id", classId)
+    .maybeSingle();
+  const className = classRow?.name || "lớp đã chọn";
+
+  const { data: activeForClass, error: classAssignmentError } = await supabaseAdmin
+    .from("homeroom_assignments")
+    .select("id, teacher_id")
+    .eq("class_id", classId)
+    .eq("academic_year_id", academicYearId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (classAssignmentError) {
+    console.error("Error checking homeroom class assignment:", classAssignmentError);
+    return { status: "CONFLICT", message: `Không kiểm tra được GVCN hiện tại của lớp ${className}.` };
+  }
+
+  if (activeForClass?.teacher_id === teacherId) {
+    return { status: "EXISTS", message: `Đã là GVCN lớp ${className}; không tạo bản ghi trùng.` };
+  }
+
+  if (activeForClass?.teacher_id && activeForClass.teacher_id !== teacherId) {
+    const { data: otherTeacher } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", activeForClass.teacher_id)
+      .maybeSingle();
+    return {
+      status: "CONFLICT",
+      message: `Lớp ${className} đang có GVCN${otherTeacher?.full_name ? `: ${otherTeacher.full_name}` : " khác"}. Hệ thống không tự ghi đè.`,
+    };
+  }
+
+  // Guard against assigning one teacher to two active homeroom classes in the same academic year by accident.
+  const { data: teacherExisting, error: teacherAssignmentError } = await supabaseAdmin
+    .from("homeroom_assignments")
+    .select("id, class_id")
+    .eq("teacher_id", teacherId)
+    .eq("academic_year_id", academicYearId)
+    .eq("is_active", true)
+    .neq("class_id", classId)
+    .limit(1);
+
+  if (teacherAssignmentError) {
+    console.error("Error checking teacher's other homeroom assignment:", teacherAssignmentError);
+    return { status: "CONFLICT", message: "Không kiểm tra được lớp chủ nhiệm hiện tại của giáo viên." };
+  }
+
+  if (teacherExisting && teacherExisting.length > 0) {
+    const otherClassId = teacherExisting[0].class_id;
+    const { data: otherClass } = await supabaseAdmin.from("classes").select("name").eq("id", otherClassId).maybeSingle();
+    return {
+      status: "CONFLICT",
+      message: `Giáo viên đang là GVCN lớp ${otherClass?.name || "khác"} trong cùng năm học. Không tự chuyển lớp để tránh gán nhầm.`,
+    };
+  }
+
+  const { error: insertError } = await supabaseAdmin.from("homeroom_assignments").insert({
+    teacher_id: teacherId,
+    class_id: classId,
+    academic_year_id: academicYearId,
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: null,
+    is_active: true,
+    notes: "Gán tự động từ file nhập Giáo viên/Cán bộ",
+  });
+
+  if (insertError) {
+    console.error("Error creating homeroom assignment:", insertError);
+    return { status: "CONFLICT", message: `Không thể gán GVCN cho lớp ${className}. Có thể lớp vừa được gán bởi thao tác khác.` };
+  }
+
+  return { status: "CREATED", message: `Đã gán GVCN lớp ${className}.` };
+}
+
 async function processSingleUser(
   user: UserInput,
   callerId: string,
   supabaseUser: any,
   supabaseAdmin: any,
-  studentDomain: string
+  studentDomain: string,
+  existingByEmail?: Map<string, ExistingAuthUser>
 ): Promise<ProcessResult> {
   const rowNum = user.row_number;
   const rawEmail = (user.email || "").trim().toLowerCase();
@@ -198,6 +477,8 @@ async function processSingleUser(
   const roles = user.roles || [];
   const classId = user.class_id || null;
   const academicYearId = user.academic_year_id || null;
+  const isStudent = roles.includes("STUDENT");
+  const isTeacher = roles.includes("TEACHER");
 
   // 1. Verify caller permissions for each requested role using user-context RPC
   try {
@@ -207,37 +488,92 @@ async function processSingleUser(
         target_class_id: classId,
         target_academic_year_id: academicYearId,
       });
-      if (error) {
-        throw new Error("Lỗi kiểm tra phân quyền.");
-      }
+      if (error) throw new Error("Lỗi kiểm tra phân quyền.");
       return { role: roleCode, allowed: !!data };
     });
 
-    const results = await Promise.all(permissionChecks);
-    const forbiddenRoles = results.filter((r) => !r.allowed).map((r) => r.role);
-
+    const permissionResults = await Promise.all(permissionChecks);
+    const forbiddenRoles = permissionResults.filter((r) => !r.allowed).map((r) => r.role);
     if (forbiddenRoles.length > 0) {
       return {
         row_number: rowNum,
         email: rawEmail || undefined,
         student_code: studentCode || undefined,
         success: false,
+        status: "FAILED",
         error_code: "FORBIDDEN",
         error: "Bạn không có quyền quản lý/tạo vai trò được yêu cầu trong phạm vi này.",
       };
     }
-  } catch (err: any) {
+  } catch (_err) {
     return {
       row_number: rowNum,
       email: rawEmail || undefined,
       student_code: studentCode || undefined,
       success: false,
+      status: "FAILED",
       error_code: "FORBIDDEN",
       error: "Yêu cầu bị từ chối do không có quyền thực hiện hành động này.",
     };
   }
 
-  // 2. Check if student_code is already declared / exists in profiles table
+  // 2. Existing non-student account by email -> idempotent update, never reset password.
+  //    Student behavior is intentionally left strict because student_code/enrollment identity has different rules.
+  const existingAuthUser = rawEmail ? existingByEmail?.get(rawEmail) : undefined;
+  if (existingAuthUser && !isStudent) {
+    const basic = await ensureExistingUserBasics(existingAuthUser.id, fullName, roles, callerId, supabaseAdmin);
+    if (basic.error) {
+      return {
+        row_number: rowNum,
+        email: rawEmail,
+        success: false,
+        status: "FAILED",
+        user_id: existingAuthUser.id,
+        error_code: "EXISTING_ACCOUNT_UPDATE_FAILED",
+        error: basic.error,
+      };
+    }
+
+    let assignmentStatus: "NONE" | "CREATED" | "EXISTS" | "CONFLICT" = "NONE";
+    let assignmentMessage = "";
+    if (isTeacher && classId && academicYearId) {
+      const assignment = await ensureHomeroomAssignment(existingAuthUser.id, classId, academicYearId, supabaseAdmin);
+      assignmentStatus = assignment.status;
+      assignmentMessage = assignment.message || "";
+      if (assignment.status === "CONFLICT") {
+        return {
+          row_number: rowNum,
+          email: rawEmail,
+          login_identifier: rawEmail,
+          success: false,
+          status: "CONFLICT",
+          user_id: existingAuthUser.id,
+          error_code: "HOMEROOM_CONFLICT",
+          error: assignmentMessage,
+          message: assignmentMessage,
+        };
+      }
+    }
+
+    const changed = basic.changed || assignmentStatus === "CREATED";
+    const status: ImportStatus = changed ? "UPDATED" : "SKIPPED";
+    const message = changed
+      ? `Tài khoản đã tồn tại; đã cập nhật thông tin${assignmentMessage ? `; ${assignmentMessage}` : ""}. Mật khẩu hiện tại được giữ nguyên.`
+      : `Tài khoản đã tồn tại; không tạo trùng${assignmentMessage ? `; ${assignmentMessage}` : ""}. Mật khẩu hiện tại được giữ nguyên.`;
+
+    return {
+      row_number: rowNum,
+      email: rawEmail,
+      login_identifier: rawEmail,
+      temporary_password: undefined,
+      success: true,
+      status,
+      user_id: existingAuthUser.id,
+      message,
+    };
+  }
+
+  // 3. Student code uniqueness keeps the original strict behavior.
   if (studentCode) {
     try {
       const { data: existingStudent, error: checkError } = await supabaseAdmin
@@ -246,16 +582,14 @@ async function processSingleUser(
         .eq("student_code", studentCode)
         .maybeSingle();
 
-      if (checkError) {
-        console.error("Error checking student_code uniqueness:", checkError);
-      }
-
+      if (checkError) console.error("Error checking student_code uniqueness:", checkError);
       if (existingStudent) {
         return {
           row_number: rowNum,
           email: rawEmail || undefined,
           student_code: studentCode,
           success: false,
+          status: "FAILED",
           error_code: "STUDENT_CODE_EXISTS",
           error: `Mã học sinh '${studentCode}' đã tồn tại trên hệ thống.`,
         };
@@ -265,10 +599,27 @@ async function processSingleUser(
     }
   }
 
+  // Preflight homeroom conflict before creating a brand-new teacher account.
+  if (isTeacher && classId && academicYearId) {
+    const availability = await checkHomeroomClassAvailability(classId, academicYearId, supabaseAdmin);
+    if (!availability.available) {
+      return {
+        row_number: rowNum,
+        email: rawEmail || undefined,
+        success: false,
+        status: "CONFLICT",
+        error_code: "HOMEROOM_CONFLICT",
+        error: availability.message || "Lớp đã có GVCN khác.",
+        message: availability.message || "Lớp đã có GVCN khác.",
+      };
+    }
+  }
+
   let authUserId = "";
-  const temporaryPassword = generateTemporaryPassword();
+  const temporaryPassword = await generatePasswordForUser(roles, classId, supabaseAdmin);
   const targetEmail = rawEmail ? rawEmail : `${studentCode.toLowerCase()}@${studentDomain}`;
 
+  // If create_many preload missed a just-created duplicate, createUser still protects us.
   try {
     const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: targetEmail,
@@ -287,9 +638,10 @@ async function processSingleUser(
         email: rawEmail || undefined,
         student_code: studentCode || undefined,
         success: false,
+        status: "FAILED",
         error_code: createError.status === 422 ? "EMAIL_EXISTS" : "ACCOUNT_CREATION_FAILED",
-        error: createError.status === 422 
-          ? (rawEmail ? "Email này đã tồn tại trong hệ thống." : `Tài khoản học sinh '${studentCode}' đã tồn tại.`)
+        error: createError.status === 422
+          ? (rawEmail ? "Email này đã tồn tại. Hãy nhập lại file để hệ thống nhận diện/cập nhật tài khoản hiện có." : `Tài khoản học sinh '${studentCode}' đã tồn tại.`)
           : "Tạo tài khoản không thành công.",
       };
     }
@@ -300,11 +652,11 @@ async function processSingleUser(
         email: rawEmail || undefined,
         student_code: studentCode || undefined,
         success: false,
+        status: "FAILED",
         error_code: "ACCOUNT_CREATION_FAILED",
         error: "Tạo tài khoản không thành công.",
       };
     }
-
     authUserId = createData.user.id;
   } catch (err: any) {
     console.error("Unexpected error creating user:", err);
@@ -313,12 +665,13 @@ async function processSingleUser(
       email: rawEmail || undefined,
       student_code: studentCode || undefined,
       success: false,
+      status: "FAILED",
       error_code: "ACCOUNT_CREATION_FAILED",
       error: "Lỗi kết nối khi tạo tài khoản.",
     };
   }
 
-  // 3. Finalize User Setup using RPC
+  // 4. Finalize profile / roles / student enrollment.
   try {
     const { error: rpcError } = await supabaseAdmin.rpc("finalize_invited_user", {
       target_user_id: authUserId,
@@ -333,18 +686,40 @@ async function processSingleUser(
 
     if (rpcError) {
       console.error(`finalize_invited_user RPC error for ${authUserId}:`, rpcError);
-      // Rollback Auth User
       const compensated = await deleteUserCompensation(supabaseAdmin, authUserId);
       return {
         row_number: rowNum,
         email: rawEmail || undefined,
         student_code: studentCode || undefined,
         success: false,
+        status: "FAILED",
         error_code: compensated ? "DATABASE_FINALIZATION_FAILED" : "COMPENSATION_FAILED",
         error: compensated
           ? "Lỗi hoàn tất thông tin người dùng trong cơ sở dữ liệu. Tài khoản đã được hủy."
           : "Lỗi hoàn tất thông tin người dùng và quá trình dọn dẹp tài khoản thất bại.",
       };
+    }
+
+    // 5. Teacher + class means homeroom assignment. Never overwrite a different active teacher.
+    let assignmentMessage = "";
+    if (isTeacher && classId && academicYearId) {
+      const assignment = await ensureHomeroomAssignment(authUserId, classId, academicYearId, supabaseAdmin);
+      assignmentMessage = assignment.message || "";
+      if (assignment.status === "CONFLICT") {
+        // Keep the newly created account/profile; only the homeroom relationship is blocked.
+        return {
+          row_number: rowNum,
+          email: rawEmail || undefined,
+          login_identifier: targetEmail,
+          temporary_password: temporaryPassword,
+          success: false,
+          status: "CONFLICT",
+          user_id: authUserId,
+          error_code: "HOMEROOM_CONFLICT",
+          error: `Tài khoản đã được tạo nhưng chưa gán GVCN: ${assignmentMessage}`,
+          message: `Tài khoản đã được tạo nhưng chưa gán GVCN: ${assignmentMessage}`,
+        };
+      }
     }
 
     return {
@@ -354,7 +729,11 @@ async function processSingleUser(
       login_identifier: studentCode || targetEmail,
       temporary_password: temporaryPassword || undefined,
       success: true,
+      status: "CREATED",
       user_id: authUserId,
+      message: assignmentMessage
+        ? `Tạo tài khoản thành công; ${assignmentMessage}`
+        : "Tạo tài khoản thành công.",
     };
   } catch (err: any) {
     console.error(`Unexpected setup error for user ${authUserId}:`, err);
@@ -364,6 +743,7 @@ async function processSingleUser(
       email: rawEmail || undefined,
       student_code: studentCode || undefined,
       success: false,
+      status: "FAILED",
       error_code: compensated ? "DATABASE_FINALIZATION_FAILED" : "COMPENSATION_FAILED",
       error: compensated
         ? "Đã xảy ra lỗi khi hoàn tất hồ sơ người dùng. Tài khoản đã được hủy."
@@ -476,6 +856,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             message: "Thiếu thông tin người dùng trong payload ('user').",
           }),
@@ -495,10 +876,14 @@ Deno.serve(async (req) => {
         );
       }
 
-      const result = await processSingleUser(userInput, callerId, supabaseUser, supabaseAdmin, studentDomain);
+      const existingByEmail = await loadExistingUsersByEmail(
+        supabaseAdmin,
+        userInput?.email ? [String(userInput.email)] : []
+      );
+      const result = await processSingleUser(userInput, callerId, supabaseUser, supabaseAdmin, studentDomain, existingByEmail);
 
       if (!result.success) {
-        const status = result.error_code === "FORBIDDEN" ? 403 : 400;
+        const status = result.error_code === "FORBIDDEN" ? 403 : result.status === "CONFLICT" ? 409 : 400;
         return new Response(
           JSON.stringify({
             success: false,
@@ -517,6 +902,8 @@ Deno.serve(async (req) => {
             login_identifier: result.login_identifier,
             temporary_password: result.temporary_password,
             student_code: result.student_code,
+            status: result.status,
+            message: result.message,
           },
         }),
         { status: 200, headers: corsHeaders }
@@ -532,6 +919,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             message: "Thiếu danh sách người dùng hoặc định dạng không đúng ('users' phải là một mảng).",
           }),
@@ -543,6 +931,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             message: "Danh sách người dùng không được để trống.",
           }),
@@ -554,6 +943,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             message: "Giới hạn tối đa là 100 tài khoản cho mỗi yêu cầu.",
           }),
@@ -576,6 +966,11 @@ Deno.serve(async (req) => {
         .filter((code) => !!code);
       const duplicateCodes = codesInBatch.filter((item, index) => codesInBatch.indexOf(item) !== index);
 
+      const existingByEmail = await loadExistingUsersByEmail(
+        supabaseAdmin,
+        users.map((u) => u?.email || "").filter(Boolean)
+      );
+
       const results: ProcessResult[] = [];
 
       for (const u of users) {
@@ -586,6 +981,7 @@ Deno.serve(async (req) => {
             row_number: rowNum,
             email: u.email,
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             error: "Email bị trùng lặp trong tệp tải lên.",
           });
@@ -601,6 +997,7 @@ Deno.serve(async (req) => {
             email: u.email || undefined,
             student_code: studentCode,
             success: false,
+            status: "FAILED",
             error_code: "VALIDATION_ERROR",
             error: `Mã học sinh '${studentCode}' bị trùng lặp trong tệp tải lên.`,
           });
@@ -620,7 +1017,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const res = await processSingleUser(u, callerId, supabaseUser, supabaseAdmin, studentDomain);
+        const res = await processSingleUser(u, callerId, supabaseUser, supabaseAdmin, studentDomain, existingByEmail);
         results.push({
           row_number: rowNum,
           email: u.email || undefined,
@@ -628,9 +1025,11 @@ Deno.serve(async (req) => {
           login_identifier: res.login_identifier,
           temporary_password: res.temporary_password,
           success: res.success,
+          status: res.status,
           user_id: res.user_id,
           error_code: res.error_code,
           error: res.error,
+          message: res.message,
         });
       }
 

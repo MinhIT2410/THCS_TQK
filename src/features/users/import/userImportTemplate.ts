@@ -37,8 +37,8 @@ export const downloadImportTemplate = (
       student_code: '',
       email: 'giaovien1@truong.edu.vn',
       roles: 'TEACHER',
-      class_name: '',
-      academic_year_name: ''
+      class_name: '6/1',
+      academic_year_name: '2026-2027'
     },
     {
       full_name: 'Trần Văn Cán Bộ',
@@ -91,10 +91,12 @@ export const downloadImportTemplate = (
     { 'Quy tắc chuẩn bị dữ liệu': 'Chế độ file', 'Mô tả chi tiết': importMode === 'STAFF' ? 'Mẫu dành cho Giáo viên/Cán bộ. Không dùng vai trò STUDENT.' : importMode === 'STUDENT' ? 'Mẫu dành cho Học sinh. Vai trò phải có STUDENT.' : 'Mẫu hỗn hợp tương thích luồng cũ.' },
     { 'Quy tắc chuẩn bị dữ liệu': 'Họ tên (full_name)', 'Mô tả chi tiết': 'Bắt buộc nhập.' },
     { 'Quy tắc chuẩn bị dữ liệu': 'Vai trò (roles)', 'Mô tả chi tiết': 'Bắt buộc. Hợp lệ: SUPER_ADMIN, PRINCIPAL, VICE_PRINCIPAL, CONTENT_EDITOR, STAFF, TEACHER, STUDENT.' },
-    { 'Quy tắc chuẩn bị dữ liệu': 'Giáo viên/Cán bộ', 'Mô tả chi tiết': 'Bắt buộc có Email. Giáo viên dùng TEACHER; cán bộ/nhân viên có thể dùng STAFF hoặc vai trò quản lý phù hợp quyền của người nhập.' },
+    { 'Quy tắc chuẩn bị dữ liệu': 'Giáo viên/Cán bộ', 'Mô tả chi tiết': 'Bắt buộc có Email. Giáo viên dùng TEACHER; nếu điền class_name thì hệ thống gán luôn GVCN cho lớp đó. Cán bộ/nhân viên có thể dùng STAFF hoặc vai trò quản lý phù hợp quyền của người nhập.' },
     { 'Quy tắc chuẩn bị dữ liệu': 'Mã học sinh (student_code)', 'Mô tả chi tiết': 'Chỉ dành cho STUDENT; học sinh không có Email bắt buộc có Mã học sinh.' },
-    { 'Quy tắc chuẩn bị dữ liệu': 'Tên lớp học (class_name)', 'Mô tả chi tiết': 'Chỉ bắt buộc với STUDENT. Copy chính xác từ sheet Danh_sach_lop.' },
-    { 'Quy tắc chuẩn bị dữ liệu': 'Tên năm học (academic_year_name)', 'Mô tả chi tiết': 'Chỉ bắt buộc với STUDENT. Copy chính xác từ sheet Nam_hoc.' },
+    { 'Quy tắc chuẩn bị dữ liệu': 'Tên lớp học (class_name)', 'Mô tả chi tiết': 'Bắt buộc với STUDENT. Với TEACHER: nếu điền thì được hiểu là lớp chủ nhiệm; copy chính xác từ sheet Danh_sach_lop.' },
+    { 'Quy tắc chuẩn bị dữ liệu': 'Tên năm học (academic_year_name)', 'Mô tả chi tiết': 'Bắt buộc với STUDENT. Với TEACHER có lớp chủ nhiệm: có thể điền; nếu để trống hệ thống dùng năm học hiện tại khi chỉ có một năm đang hoạt động.' },
+    { 'Quy tắc chuẩn bị dữ liệu': 'Mật khẩu GVCN mới', 'Mô tả chi tiết': 'Tài khoản TEACHER mới có lớp chủ nhiệm dùng mật khẩu mặc định gvcn@ + tên lớp rút gọn. Ví dụ 6/1 → gvcn@61; 6.1 → gvcn@6.1. Nhập lại tài khoản đã có KHÔNG reset mật khẩu.' },
+    { 'Quy tắc chuẩn bị dữ liệu': 'Nhập lại file', 'Mô tả chi tiết': 'An toàn khi nhập lại: tài khoản email đã tồn tại sẽ được cập nhật/gán lớp nếu cần, không tạo trùng và không đổi mật khẩu; nếu lớp đã có GVCN khác sẽ báo XUNG ĐỘT, không ghi đè.' },
     { 'Quy tắc chuẩn bị dữ liệu': 'Phân cách vai trò', 'Mô tả chi tiết': 'Nhiều vai trò phân cách bằng dấu phẩy, ví dụ TEACHER,STAFF.' },
     { 'Quy tắc chuẩn bị dữ liệu': 'Giới hạn', 'Mô tả chi tiết': 'Tối đa 100 tài khoản mỗi lần nhập.' }
   ];
