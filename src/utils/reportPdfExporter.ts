@@ -299,6 +299,53 @@ function sanitizeClonedDocColors(clonedDoc: Document, clonedElement: HTMLElement
  * 3. Scales content so it occupies almost full printable width (190mm).
  * 4. Automatically splits multi-page reports cleanly at table row boundaries without squishing or clipping.
  */
+
+/**
+ * html2canvas can render Tailwind's space-y-* utilities too tightly because
+ * recent Tailwind versions implement them with logical margins / CSS variables.
+ * Materialize the important vertical spacing as plain margin-top values only
+ * inside the cloned DOM used for PDF export, so the on-screen report is unchanged.
+ */
+function materializeVerticalSpacingForPdf(root: HTMLElement): void {
+  const spacingMap: Array<[string, string]> = [
+    ['space-y-6', '24px'],
+    ['space-y-5', '20px'],
+    ['space-y-4', '16px'],
+    ['space-y-3', '12px'],
+    ['space-y-2', '8px'],
+    ['space-y-1', '4px'],
+    ['space-y-0.5', '2px'],
+  ];
+
+  spacingMap.forEach(([className, marginTop]) => {
+    const containers: HTMLElement[] = [];
+    if (root.classList.contains(className)) {
+      containers.push(root);
+    }
+    root.querySelectorAll<HTMLElement>(`.${className.replace('.', '\\.')}`).forEach((el) => {
+      containers.push(el);
+    });
+
+    containers.forEach((container) => {
+      const children = Array.from(container.children) as HTMLElement[];
+      children.forEach((child, index) => {
+        if (index > 0) {
+          child.style.marginTop = marginTop;
+        }
+      });
+    });
+  });
+
+  // Keep detailed violation text comfortably readable on A4.
+  root.querySelectorAll<HTMLElement>('table tbody td:last-child').forEach((cell) => {
+    cell.style.lineHeight = '1.5';
+  });
+
+  root.querySelectorAll<HTMLElement>('table tbody td:last-child li').forEach((item) => {
+    item.style.lineHeight = '1.5';
+  });
+}
+
 export async function exportReportToPdf(
   targetElement: HTMLElement | null,
   report: CompetitionWeeklyReport,
@@ -354,6 +401,10 @@ export async function exportReportToPdf(
       scrollWrappers.forEach((wrapper) => {
         (wrapper as HTMLElement).style.overflow = 'visible';
       });
+
+      // Tailwind space-y-* can collapse visually in html2canvas.
+      // Convert it to ordinary margin-top values in the export clone only.
+      materializeVerticalSpacingForPdf(element);
 
       // Sanitize OKLCH colors on cloned DOM
       sanitizeClonedDocColors(clonedDoc, element);
