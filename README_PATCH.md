@@ -1,23 +1,24 @@
-# PATCH - GVCN xem Báo cáo thi đua chỉ trong lớp chủ nhiệm
+# PATCH - PDF báo cáo nhẹ hơn, vẫn giữ bố cục giao diện
 
-## Mục tiêu
-- GVCN thấy thẻ **Báo cáo** ở trang Thi đua.
-- Khi vào báo cáo, dữ liệu chỉ lấy các lớp đang được phân công GVCN cho chính tài khoản đó trong năm học hiện tại.
-- GVCN xem được:
-  - **Ghi nhận trong tuần**
-  - **Thống kê lỗi vi phạm**
-- GVCN **không thấy / không truy cập** tab **Lưu báo cáo & xuất file**, vì lịch sử snapshot có thể chứa dữ liệu toàn trường.
-- Người có quyền báo cáo toàn trường (Admin/BGH/thi đua/giám thị/sao đỏ theo logic cũ) vẫn giữ nguyên quyền và giao diện.
+## Nguyên nhân file PDF cũ nặng
+Luồng cũ chụp toàn bộ báo cáo bằng `html2canvas` ở `scale: 2`, sau đó mỗi trang được nhúng vào PDF dưới dạng **PNG lossless**.
+Với báo cáo 65 lớp, PDF 3 trang có thể lên tới hàng chục MB.
 
-## An toàn dữ liệu
-- Scope được resolve từ `homeroom_assignments.teacher_id = auth user` + `is_active = true` + năm học hiện tại.
-- Hai component báo cáo đã có sẵn `allowedClassIds`; patch chỉ nối đúng scope GVCN vào các component này.
-- Nếu GVCN gõ trực tiếp URL `?tab=save-export`, hệ thống tự chuyển về tab **Thống kê lỗi vi phạm**.
+## Thay đổi
+Chỉ sửa:
+`src/utils/reportPdfExporter.ts`
 
-## File thay đổi
-- `src/services/competitionService.ts`
-- `src/pages/CompetitionReportPage.tsx`
-- `src/components/competition/CompetitionQuickActions.tsx`
+- `html2canvas scale`: 2 -> **1.5**
+- Ảnh từng trang: PNG -> **JPEG quality 0.88**
+- Bật `jsPDF compress`
+- Giữ A4 portrait, lề, cách chia trang và giao diện báo cáo hiện tại.
+- Không thay đổi dữ liệu, DB, snapshot hoặc modal xem báo cáo.
+
+## Kỳ vọng
+- PDF nhẹ hơn rất nhiều (thường giảm khoảng 70-90% tùy nội dung).
+- Chữ/bảng vẫn rõ để xem và in A4.
+- Không còn mỗi trang là PNG lossless rất nặng.
 
 ## Triển khai
-Copy đè đúng đường dẫn, commit/push để Vercel build. **Không cần SQL migration** và không cần deploy Edge Function.
+Copy đè file theo đúng đường dẫn, commit/push Vercel.
+Không cần SQL migration, không cần deploy Edge Function.

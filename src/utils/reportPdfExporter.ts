@@ -311,8 +311,10 @@ export async function exportReportToPdf(
   const fileName = buildReportPdfFileName(report, isSnapshot);
 
   // 1. Capture DOM element with html2canvas
+  // 1.5x is ~145-155 DPI for this A4 layout: sharp enough for text,
+  // while avoiding the very large 2x full-page raster that previously produced ~20-30 MB PDFs.
   const canvas = await html2canvas(targetElement, {
-    scale: 2,
+    scale: 1.5,
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
@@ -362,7 +364,10 @@ export async function exportReportToPdf(
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a4',
+    compress: true,
+    putOnlyUsedFonts: true,
+    precision: 3
   });
 
   const pageWidth = 210; // A4 width in mm
@@ -418,7 +423,7 @@ export async function exportReportToPdf(
     // Slice canvas
     const pageCanvas = document.createElement('canvas');
     pageCanvas.width = canvas.width;
-    pageCanvas.height = slicePx;
+    pageCanvas.height = Math.max(1, Math.ceil(slicePx));
 
     const ctx = pageCanvas.getContext('2d');
     if (ctx) {
@@ -431,14 +436,26 @@ export async function exportReportToPdf(
       );
     }
 
-    const pageImgData = pageCanvas.toDataURL('image/png');
+    // The report is mostly text on a white/light background.
+    // JPEG dramatically reduces PDF size compared with embedding a lossless PNG per page.
+    // 0.88 keeps small text and thin table borders visually clean at 1.5x capture scale.
+    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.88);
     const pdfImageHeight = slicePx * mmPerCanvasPx;
 
     if (pageIndex > 0) {
       pdf.addPage();
     }
 
-    pdf.addImage(pageImgData, 'PNG', margin, margin, printableWidth, pdfImageHeight);
+    pdf.addImage(
+      pageImgData,
+      'JPEG',
+      margin,
+      margin,
+      printableWidth,
+      pdfImageHeight,
+      undefined,
+      'FAST'
+    );
 
     currentY += slicePx;
     pageIndex++;
