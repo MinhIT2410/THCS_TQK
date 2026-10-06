@@ -21,6 +21,7 @@ export default function CompetitionQuickActions() {
   const [loading, setLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [pendingLoading, setPendingLoading] = useState<boolean>(false);
+  const [isHomeroomReport, setIsHomeroomReport] = useState(false);
 
   const [permissions, setPermissions] = useState({
     canRecord: false,
@@ -80,6 +81,13 @@ export default function CompetitionQuickActions() {
           console.error('[CompetitionQuickActions] Lỗi tải nhiệm vụ thi đua:', err);
         }
 
+        let homeroomClassIds: string[] = [];
+        try {
+          homeroomClassIds = await competitionService.getMyActiveHomeroomClassIds();
+        } catch (err) {
+          console.error('[CompetitionQuickActions] Lỗi tải lớp chủ nhiệm:', err);
+        }
+
         if (!isMounted) return;
 
         // Card 1: Ghi nhận
@@ -104,7 +112,11 @@ export default function CompetitionQuickActions() {
           isManageRole ||
           isReportRole ||
           supervisorActive ||
-          redStarActive;
+          redStarActive ||
+          homeroomClassIds.length > 0;
+
+        const fullReportAccess = isSuperAdmin || isPrincipal || isManageRole || isReportRole || supervisorActive || redStarActive;
+        setIsHomeroomReport(!fullReportAccess && homeroomClassIds.length > 0);
 
         setPermissions({
           canRecord,
@@ -171,7 +183,9 @@ export default function CompetitionQuickActions() {
     {
       key: 'report',
       title: 'Báo cáo',
-      description: 'Theo dõi tình hình trong ngày, tổng hợp tuần, nhóm lỗi và lớp vi phạm.',
+      description: isHomeroomReport
+        ? 'Xem ghi nhận và thống kê thi đua của riêng lớp chủ nhiệm.'
+        : 'Theo dõi tình hình trong ngày, tổng hợp tuần, nhóm lỗi và lớp vi phạm.',
       icon: BarChart3,
       btnText: 'Xem báo cáo',
       route: ROUTES.COMPETITION_REPORT,

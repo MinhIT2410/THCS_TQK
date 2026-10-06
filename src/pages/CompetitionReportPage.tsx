@@ -10,7 +10,8 @@ import {
   ArrowLeft, 
   Calendar,
   ShieldAlert,
-  Loader2
+  Loader2,
+  School
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { competitionService } from '../services/competitionService';
@@ -26,6 +27,8 @@ export default function CompetitionReportPage() {
 
   const [checkingPermission, setCheckingPermission] = useState(true);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [allowedClassIds, setAllowedClassIds] = useState<string[] | undefined>(undefined);
+  const [isHomeroomScoped, setIsHomeroomScoped] = useState(false);
 
   const initialTab = (tabParam === 'statistics' || tabParam === 'save-export' || tabParam === 'weekly') ? tabParam : 'weekly';
   const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'statistics' | 'save-export'>(initialTab);
@@ -69,6 +72,8 @@ export default function CompetitionReportPage() {
         ]);
 
         if (isAuthorizedByRole) {
+          setAllowedClassIds(undefined);
+          setIsHomeroomScoped(false);
           setHasPermission(true);
           setCheckingPermission(false);
           return;
@@ -88,11 +93,25 @@ export default function CompetitionReportPage() {
         });
 
         if (hasActorAssignment) {
+          setAllowedClassIds(undefined);
+          setIsHomeroomScoped(false);
           setHasPermission(true);
           setCheckingPermission(false);
           return;
         }
 
+        // 3. GVCN: may view reports, but only for the class(es) currently assigned to them.
+        const myHomeroomClassIds = await competitionService.getMyActiveHomeroomClassIds();
+        if (myHomeroomClassIds.length > 0) {
+          setAllowedClassIds(myHomeroomClassIds);
+          setIsHomeroomScoped(true);
+          setHasPermission(true);
+          setCheckingPermission(false);
+          return;
+        }
+
+        setAllowedClassIds(undefined);
+        setIsHomeroomScoped(false);
         setHasPermission(false);
       } catch (err) {
         console.error('[CompetitionReportPage] Error checking report permission:', err);
@@ -104,6 +123,14 @@ export default function CompetitionReportPage() {
 
     checkReportPermission();
   }, [user, isAuthenticated, loading, profileLoading, hasAnyRole]);
+
+  // GVCN only gets live weekly/statistics views. Prevent direct URL access to school-wide saved/export reports.
+  useEffect(() => {
+    if (isHomeroomScoped && activeReportTab === 'save-export') {
+      setActiveReportTab('statistics');
+      setSearchParams({ tab: 'statistics' }, { replace: true });
+    }
+  }, [isHomeroomScoped, activeReportTab, setSearchParams]);
 
   // Loading state: Only show initial spinner if profile is not loaded or permission hasn't been determined yet
   if (loading || (isAuthenticated && !profile && profileLoading) || (hasPermission === null && checkingPermission)) {
@@ -137,7 +164,7 @@ export default function CompetitionReportPage() {
               Bạn không có quyền xem báo cáo thi đua.
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500 pt-2">
-              Chức năng này dành cho Giám thị, Đội Sao đỏ, Ban BGH, Quản trị viên hoặc lực lượng được ủy quyền thi đua.
+              Chức năng này dành cho GVCN (phạm vi lớp chủ nhiệm), Giám thị, Đội Sao đỏ, Ban BGH, Quản trị viên hoặc lực lượng được ủy quyền thi đua.
             </p>
           </div>
 
@@ -182,7 +209,13 @@ export default function CompetitionReportPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {isHomeroomScoped && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                <School className="w-3.5 h-3.5" />
+                <span>Chỉ lớp chủ nhiệm</span>
+              </span>
+            )}
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 text-xs font-bold text-blue-700 dark:text-blue-300">
               <Calendar className="w-3.5 h-3.5" />
               <span>Năm học hiện tại</span>
@@ -192,7 +225,8 @@ export default function CompetitionReportPage() {
       </div>
 
       {/* Segmented Tab Selector */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-x-auto no-scrollbar sm:grid sm:grid-cols-3">
+      <div className={`flex items-center gap-1.5 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-x-auto no-scrollbar sm:grid ${isHomeroomScoped ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+
         <button
           type="button"
           onClick={() => handleTabChange('weekly')}
@@ -217,24 +251,26 @@ export default function CompetitionReportPage() {
           THỐNG KÊ LỖI VI PHẠM
         </button>
 
-        <button
-          type="button"
-          onClick={() => handleTabChange('save-export')}
-          className={`h-10 px-4 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center justify-center ${
-            activeReportTab === 'save-export'
-              ? 'bg-red-600 text-white shadow-xs font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
-          }`}
-        >
-          LƯU BÁO CÁO & XUẤT FILE
-        </button>
+        {!isHomeroomScoped && (
+          <button
+            type="button"
+            onClick={() => handleTabChange('save-export')}
+            className={`h-10 px-4 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center justify-center ${
+              activeReportTab === 'save-export'
+                ? 'bg-red-600 text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            LƯU BÁO CÁO & XUẤT FILE
+          </button>
+        )}
       </div>
 
       {/* Active Tab Content Panel */}
       <div>
-        {activeReportTab === 'weekly' && <WeeklyIncidentsReportCard />}
-        {activeReportTab === 'statistics' && <ViolationStatisticsCard />}
-        {activeReportTab === 'save-export' && <SaveExportReportCard />}
+        {activeReportTab === 'weekly' && <WeeklyIncidentsReportCard allowedClassIds={allowedClassIds} />}
+        {activeReportTab === 'statistics' && <ViolationStatisticsCard allowedClassIds={allowedClassIds} />}
+        {!isHomeroomScoped && activeReportTab === 'save-export' && <SaveExportReportCard />}
       </div>
     </div>
   );

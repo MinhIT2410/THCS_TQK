@@ -1791,6 +1791,48 @@ export const competitionService = {
     return data || [];
   },
 
+
+  /**
+   * Return active homeroom class ids for the signed-in teacher.
+   * If academicYearId is omitted, the current/active academic year is resolved automatically.
+   * Used to scope competition reports for GVCN without granting school-wide report access.
+   */
+  async getMyActiveHomeroomClassIds(academicYearId?: string): Promise<string[]> {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) return [];
+
+      let yearId = academicYearId;
+      if (!yearId) {
+        const years = await this.getAcademicYears();
+        const currentYear = years.find((y: any) => y.is_current) || years.find((y: any) => y.is_active) || years[0];
+        yearId = currentYear?.id;
+      }
+
+      let query = supabase
+        .from('homeroom_assignments')
+        .select('class_id')
+        .eq('teacher_id', userId)
+        .eq('is_active', true);
+
+      if (yearId) {
+        query = query.eq('academic_year_id', yearId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error fetching active homeroom classes:', error);
+        return [];
+      }
+
+      return Array.from(new Set((data || []).map((row: any) => row.class_id).filter(Boolean)));
+    } catch (err) {
+      console.error('Error resolving active homeroom classes:', err);
+      return [];
+    }
+  },
+
   async searchAssignmentCandidates(params: {
     assignment_type: 'SUPERVISOR' | 'LIEN_DOI_COMMAND' | 'RED_STAR';
     search?: string;
