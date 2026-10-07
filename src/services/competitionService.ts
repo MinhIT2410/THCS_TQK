@@ -720,24 +720,61 @@ export const competitionService = {
       throw error;
     }
 
-    return (data || [])
-      .filter((i: any) => {
-        const cat = i.competition_rules?.category;
-        // Exclude positive categories: GOOD_DEED (Người tốt - Việc tốt) and ACHIEVEMENT (Thành tích)
-        return cat !== 'GOOD_DEED' && cat !== 'ACHIEVEMENT';
-      })
-      .map((i: any) => ({
+    const visibleRows = (data || []).filter((i: any) => {
+      const cat = i.competition_rules?.category;
+      // Exclude positive categories: GOOD_DEED (Người tốt - Việc tốt) and ACHIEVEMENT (Thành tích)
+      return cat !== 'GOOD_DEED' && cat !== 'ACHIEVEMENT';
+    });
+
+    // A GVCN can be allowed to see an incident for their homeroom class while
+    // profiles RLS still hides the nested student/recorder relation. Do not
+    // infer "collective" from that missing nested relation. Resolve the people
+    // through a narrowly-scoped SECURITY DEFINER RPC that only returns rows
+    // belonging to the caller's active homeroom assignment.
+    const incidentIdsNeedingPeople = visibleRows
+      .filter((i: any) =>
+        (i.student_id && !i.student?.full_name) ||
+        (i.recorded_by && !i.recorder?.full_name) ||
+        (i.approved_by && !i.approver?.full_name)
+      )
+      .map((i: any) => i.id);
+
+    const peopleByIncident = new Map<string, any>();
+    if (incidentIdsNeedingPeople.length > 0) {
+      const { data: peopleRows, error: peopleError } = await supabase.rpc(
+        'get_homeroom_competition_incident_people',
+        { p_incident_ids: incidentIdsNeedingPeople }
+      );
+
+      // Compatibility/safety: a missing RPC must not break Admin or the report.
+      // It only means the GVCN fallback could not be applied.
+      if (peopleError) {
+        console.warn(
+          '[competitionService] Could not resolve homeroom incident people:',
+          peopleError
+        );
+      } else {
+        (peopleRows || []).forEach((row: any) => {
+          peopleByIncident.set(row.incident_id, row);
+        });
+      }
+    }
+
+    return visibleRows.map((i: any) => {
+      const fallbackPeople = peopleByIncident.get(i.id);
+      return {
         ...i,
         program_name: i.competition_programs?.name,
         rule_name: i.competition_rules?.name,
         rule: i.competition_rules,
-        student_name: i.student?.full_name,
-        student_code: i.student?.student_code,
+        student_name: i.student?.full_name || fallbackPeople?.student_name,
+        student_code: i.student?.student_code || fallbackPeople?.student_code,
         unit_name: i.unit?.name,
-        recorder_name: i.recorder?.full_name,
-        approver_name: i.approver?.full_name,
+        recorder_name: i.recorder?.full_name || fallbackPeople?.recorder_name,
+        approver_name: i.approver?.full_name || fallbackPeople?.approver_name,
         evidence_items: i.competition_incident_evidence || [],
-      })) as CompetitionIncident[];
+      };
+    }) as CompetitionIncident[];
   },
 
   async getPendingIncidentsCount(): Promise<number> {
