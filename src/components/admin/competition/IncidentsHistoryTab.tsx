@@ -16,12 +16,62 @@ import {
   User, 
   RefreshCw,
   Image as ImageIcon,
+  Pencil,
   ExternalLink
 } from 'lucide-react';
+import { supabase } from '../../../lib/supabase/client';
+import { useAuth } from '../../../features/auth/AuthContext';
 import { competitionService } from '../../../services/competitionService';
 import { CompetitionIncident, IncidentStatus, INCIDENT_STATUS_LABELS } from '../../../types/competition';
 
 export default function IncidentsHistoryTab() {
+  const { user } = useAuth();
+  const [canEditNotes, setCanEditNotes] = useState(false);
+  const [editIncident, setEditIncident] = useState<CompetitionIncident | null>(null);
+  const [description, setDescription] = useState('');
+  const [evidenceNote, setEvidenceNote] = useState('');
+  const [editReason, setEditReason] = useState('');
+  const [editError, setEditError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setCanEditNotes(false);
+    if (user) {
+      Promise.all([
+        supabase.rpc('has_competition_permission', { p_user_id: user.id, p_permission_code: 'COMPETITION_MANAGE' }),
+        supabase.rpc('is_admin'),
+      ]).then(([permission, admin]) => {
+        if (active) setCanEditNotes(permission.data === true || admin.data === true);
+      }).catch(() => { if (active) setCanEditNotes(false); });
+    }
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const openNotesEditor = (incident: CompetitionIncident) => {
+    setEditIncident(incident);
+    setDescription(incident.description || '');
+    setEvidenceNote(incident.evidence_note || '');
+    setEditReason('');
+    setEditError('');
+  };
+  const notesChanged = editIncident && (
+    description.trim() !== (editIncident.description || '').trim() ||
+    evidenceNote.trim() !== (editIncident.evidence_note || '').trim()
+  );
+  const saveNotes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editIncident || !notesChanged || !editReason.trim() || actionLoading) return;
+    setActionLoading(true);
+    setEditError('');
+    try {
+      await competitionService.editIncidentNotes(editIncident, description, evidenceNote, editReason);
+      setEditIncident(null);
+      setAlert({ type: 'success', text: 'Đã cập nhật ghi chú. Điểm thi đua không thay đổi.' });
+      await fetchIncidents();
+    } catch (err: any) {
+      setEditError(err.message || 'Không thể cập nhật ghi chú.');
+    } finally { setActionLoading(false); }
+  };
+
   const [incidents, setIncidents] = useState<CompetitionIncident[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -227,6 +277,13 @@ export default function IncidentsHistoryTab() {
                   </h4>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                {canEditNotes && ['APPROVED', 'PENDING', 'DRAFT'].includes(item.status) && (
+                  <button onClick={() => openNotesEditor(item)} disabled={actionLoading}
+                    className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200 flex items-center gap-1.5">
+                    <Pencil className="w-3.5 h-3.5" /> Chỉnh sửa ghi chú
+                  </button>
+                )}
                 {/* Reversal action for APPROVED incidents */}
                 {item.status === 'APPROVED' && (
                   <button
@@ -238,6 +295,7 @@ export default function IncidentsHistoryTab() {
                     <span>Hủy & Đảo Điểm</span>
                   </button>
                 )}
+                </div>
               </div>
 
               {/* Grid content */}
@@ -274,6 +332,12 @@ export default function IncidentsHistoryTab() {
                 </div>
               </div>
 
+              {(item.description || item.evidence_note) && (
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                  {item.description && <p className="whitespace-pre-wrap break-words"><strong>Ghi chú / mô tả:</strong> {item.description}</p>}
+                  {item.evidence_note && <p className="whitespace-pre-wrap break-words"><strong>Ghi chú minh chứng:</strong> {item.evidence_note}</p>}
+                </div>
+              )}
               {/* Rejection / Cancellation Reason */}
               {item.rejection_reason && (
                 <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-300 space-y-0.5">
@@ -321,6 +385,32 @@ export default function IncidentsHistoryTab() {
         </div>
       )}
 
+      {editIncident && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={saveNotes} role="dialog" aria-modal="true" aria-labelledby="edit-notes-title"
+            className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
+            <h4 id="edit-notes-title" className="text-lg font-bold">Chỉnh sửa ghi chú</h4>
+            <p className="text-xs text-slate-500">{editIncident.title} • {editIncident.unit_name} • {editIncident.student_name || 'Tập thể lớp'}</p>
+            <p className="text-xs p-3 rounded-xl bg-blue-50 text-blue-800">Chỉ sửa ghi chú, không thay đổi điểm. Nếu sai học sinh, lớp, lỗi vi phạm hoặc thời điểm, hãy hủy sự việc và ghi nhận lại.</p>
+            <fieldset disabled={actionLoading} className="space-y-4">
+              <label className="block text-xs font-semibold">Ghi chú / mô tả
+                <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} className="mt-1 w-full border rounded-xl p-3 bg-transparent" />
+              </label>
+              <label className="block text-xs font-semibold">Ghi chú minh chứng
+                <textarea rows={2} value={evidenceNote} onChange={e => setEvidenceNote(e.target.value)} className="mt-1 w-full border rounded-xl p-3 bg-transparent" />
+              </label>
+              <label className="block text-xs font-semibold">Lý do chỉnh sửa <span className="text-red-500">*</span>
+                <textarea rows={2} required value={editReason} onChange={e => setEditReason(e.target.value)} className="mt-1 w-full border rounded-xl p-3 bg-transparent" />
+              </label>
+            </fieldset>
+            {editError && <p role="alert" className="text-xs text-red-600">{editError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={actionLoading} onClick={() => setEditIncident(null)} className="px-4 py-2 text-xs rounded-xl border">Đóng</button>
+              <button type="submit" disabled={actionLoading || !notesChanged || !editReason.trim()} className="px-4 py-2 text-xs rounded-xl bg-blue-600 text-white disabled:opacity-50">{actionLoading ? 'Đang lưu...' : 'Lưu ghi chú'}</button>
+            </div>
+          </form>
+        </div>
+      )}
       {/* Reversal Modal */}
       {reverseModalIncident && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">

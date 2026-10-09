@@ -575,6 +575,19 @@ export const competitionService = {
     return data;
   },
 
+  // Notes only: accounting corrections must still cancel and re-record.
+  async editIncidentNotes(incident: CompetitionIncident, description: string, evidenceNote: string, reason: string) {
+    const { data, error } = await supabase.rpc('edit_competition_incident_notes', {
+      p_incident_id: incident.id,
+      p_expected_updated_at: incident.updated_at,
+      p_description: description.trim(),
+      p_evidence_note: evidenceNote.trim(),
+      p_reason: reason.trim(),
+    });
+    if (error) throw error;
+    return data;
+  },
+
   // --- FETCH INCIDENTS ---
   async getIncidents(filters?: {
     status?: IncidentStatus;
