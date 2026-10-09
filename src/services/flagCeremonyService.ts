@@ -149,9 +149,10 @@ export const flagCeremonyService = {
     return signal;
   },
 
-  async completeCeremony(): Promise<void> {
+  async completeCeremony(signal: CeremonyStartSignal): Promise<void> {
     if (!isSupabaseConfigured) {
       const current = getLocalState();
+      if (stateToSignal(current)?.id !== signal.id) return;
       if (current.phase === 'done' || current.phase === 'idle' || current.phase === 'waiting') return;
       setLocalState({
         ...current,
@@ -164,7 +165,10 @@ export const flagCeremonyService = {
       return;
     }
 
-    const { error } = await supabase.rpc('complete_flag_ceremony');
+    const { error } = await supabase.rpc('complete_flag_ceremony', {
+      p_expected_starts_at: signal.startsAt,
+      p_expected_updated_at: signal.id.slice('school:'.length),
+    });
     if (error) throw error;
   },
 

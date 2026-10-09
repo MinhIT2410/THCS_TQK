@@ -44,6 +44,7 @@ function VietnamFlagBackdrop({ className = '' }: { className?: string }) {
 
 export default function FlagCeremonyPage() {
   const { hasAnyRole } = useAuth();
+  const canComplete = hasAnyRole(['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'STAFF', 'TEACHER']);
   const canControl = hasAnyRole(['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL']);
   const [signal, setSignal] = useState<CeremonyStartSignal | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -366,10 +367,11 @@ export default function FlagCeremonyPage() {
       // Ignore storage failures; the server-side completion below is still authoritative.
     }
 
-    void flagCeremonyService.completeCeremony().catch((err) => {
+    if (!canComplete) return;
+    void flagCeremonyService.completeCeremony(signal).catch((err) => {
       console.warn('Không thể đánh dấu nghi lễ đã hoàn tất:', err);
     });
-  }, [signal, mediaPhase]);
+  }, [signal, mediaPhase, canComplete]);
 
   const prepareAudio = async () => {
     const elements = [
