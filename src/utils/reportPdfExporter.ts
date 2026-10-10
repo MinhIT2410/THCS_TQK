@@ -410,6 +410,8 @@ export async function exportReportToPdf(
   // 1. Capture DOM element with html2canvas
   // 1.5x is ~145-155 DPI for this A4 layout: sharp enough for text,
   // while avoiding the very large 2x full-page raster that previously produced ~20-30 MB PDFs.
+  let measuredBreaks: Array<{ top: number; bottom: number; kind: string }> = [];
+  let measuredHeight = 0;
   const canvas = await html2canvas(targetElement, {
     scale: 1.5,
     useCORS: true,
@@ -460,6 +462,21 @@ export async function exportReportToPdf(
       materializeVerticalSpacingForPdf(element);
       materializeReportTableForPdf(element);
 
+      // Measure actual clone geometry (not offsetTop, which is relative to nested
+      // table/container offset parents). Keep entire table rows and signature together.
+      const rootRect = element.getBoundingClientRect();
+      measuredHeight = element.getBoundingClientRect().height;
+      measuredBreaks = Array.from(element.querySelectorAll<HTMLElement>(
+        'tbody tr, thead, [data-pdf-section="notes"], [data-pdf-section="signatures"]'
+      )).map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          top: rect.top - rootRect.top,
+          bottom: rect.bottom - rootRect.top,
+          kind: node.matches('tbody tr') ? 'row' : node.matches('thead') ? 'header' : 'section',
+        };
+      }).filter((item) => item.bottom > item.top);
+
       // Sanitize OKLCH colors on cloned DOM
       sanitizeClonedDocColors(clonedDoc, element);
     }
@@ -485,20 +502,14 @@ export async function exportReportToPdf(
   const mmPerCanvasPx = printableWidth / canvas.width;
   const maxSlicePx = printableHeight / mmPerCanvasPx;
 
-  // Measure element break points (table rows <tr>) to prevent cutting text in half
-  const targetElementWidth = targetElement.offsetWidth || 794;
-  const scaleRatio = canvas.width / targetElementWidth;
-
-  const rowElements = Array.from(targetElement.querySelectorAll('tr, .space-y-2'));
-  const breakPointsPx: number[] = [];
-  rowElements.forEach((el) => {
-    const htmlEl = el as HTMLElement;
-    const bottomPx = (htmlEl.offsetTop + htmlEl.offsetHeight) * scaleRatio;
-    if (bottomPx > 0 && bottomPx < canvas.height) {
-      breakPointsPx.push(bottomPx);
-    }
-  });
-  breakPointsPx.sort((a, b) => a - b);
+  // html2canvas captures the export clone, so pagination must use measurements
+  // from that same clone. Canvas and clone coordinates share this scale.
+  const captureScale = canvas.height / (measuredHeight || canvas.height);
+  const blocks = measuredBreaks.map((block) => ({
+    top: block.top * captureScale,
+    bottom: block.bottom * captureScale,
+    kind: block.kind,
+  }));
 
   let currentY = 0;
   let pageIndex = 0;
@@ -506,24 +517,27 @@ export async function exportReportToPdf(
   while (currentY < canvas.height) {
     let slicePx = Math.min(maxSlicePx, canvas.height - currentY);
 
-    // If remaining content exceeds 1 page height, try to find clean row break point
-    if (currentY + maxSlicePx < canvas.height) {
-      const targetBreakY = currentY + maxSlicePx;
-      const minAcceptableY = currentY + maxSlicePx * 0.75;
-      let bestBreak = -1;
-
-      for (let i = breakPointsPx.length - 1; i >= 0; i--) {
-        const bp = breakPointsPx[i];
-        if (bp <= targetBreakY && bp >= minAcceptableY) {
-          bestBreak = bp;
-          break;
-        }
-      }
-
-      if (bestBreak > currentY) {
-        slicePx = bestBreak - currentY;
+    // A row or signature must not cross the physical A4 page boundary.
+    // Move the whole block to the next page when it fits there. For a single
+    // exceptionally tall row, a split is unavoidable and is left as fallback.
+    if (currentY + slicePx < canvas.height) {
+      const endY = currentY + slicePx;
+      const crossing = blocks.find((block) =>
+        block.top > currentY + 1 && block.top < endY - 1 && block.bottom > endY + 1
+        && block.bottom - block.top <= maxSlicePx
+      );
+      if (crossing) {
+        slicePx = crossing.top - currentY;
+      } else {
+        // Prefer ending on a completed row, rather than between a row and
+        // its surrounding table/notes, provided this doesn't waste much space.
+        const candidate = blocks
+          .filter((block) => block.bottom > currentY + maxSlicePx * 0.72 && block.bottom <= endY)
+          .sort((a, b) => b.bottom - a.bottom)[0];
+        if (candidate) slicePx = candidate.bottom - currentY;
       }
     }
+    slicePx = Math.max(1, slicePx);
 
     // Slice canvas
     const pageCanvas = document.createElement('canvas');

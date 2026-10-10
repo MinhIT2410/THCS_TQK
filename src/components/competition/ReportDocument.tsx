@@ -209,7 +209,7 @@ export const ReportDocument = forwardRef<HTMLDivElement, ReportDocumentProps>(({
       </div>
 
       {/* SUPERVISOR NOTES / COMMENTS */}
-      <div className="space-y-2 pt-2">
+      <div data-pdf-section="notes" className="space-y-2 pt-2">
         <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">
           {config.summary_section_title}
         </h4>
@@ -230,24 +230,24 @@ export const ReportDocument = forwardRef<HTMLDivElement, ReportDocumentProps>(({
       </div>
 
       {/* SIGNATURE SECTION */}
-      <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 text-xs text-center">
-        <div className="space-y-12">
+      <div data-pdf-section="signatures" className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 text-xs text-center">
+        <div className="flex flex-col items-center">
           <div>
             <p className="font-bold uppercase text-slate-700">
               {config.approver_title}
             </p>
             <p className="text-[11px] text-slate-400">(Ký và ghi rõ họ tên)</p>
           </div>
-          <p className="text-slate-300 italic">................................................</p>
+          <p className="text-slate-300 italic mt-28">................................................</p>
         </div>
-        <div className="space-y-12">
+        <div className="flex flex-col items-center">
           <div>
             <p className="font-bold uppercase text-slate-700">
               {config.reporter_title}
             </p>
             <p className="text-[11px] text-slate-400">(Ký và ghi rõ họ tên)</p>
           </div>
-          <p className="font-bold text-slate-900">{report.creator_name || 'Giám thị phụ trách'}</p>
+          <p className="font-bold text-slate-900 mt-28">{report.creator_name || 'Giám thị phụ trách'}</p>
         </div>
       </div>
     </div>
