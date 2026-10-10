@@ -1253,7 +1253,7 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
         )}
       </div>
 
-      {reportAudience === 'TEACHER' && <TeacherAttendanceReport periodType={periodType} periodLabel={currentPeriodInfo.period_label} start={currentPeriodInfo.period_start} end={currentPeriodInfo.period_end} valid={currentPeriodInfo.hasValidDates} exportOnly={exportOnly} />}
+      {reportAudience === 'TEACHER' && <TeacherAttendanceReport periodType={periodType} periodLabel={currentPeriodInfo.period_label} start={currentPeriodInfo.period_start} end={currentPeriodInfo.period_end} valid={currentPeriodInfo.hasValidDates} exportOnly={exportOnly} reportConfig={reportConfig} academicYearName={currentYearInfo?.name} creatorName={currentUserFullName} />}
       {/* REPORT PREVIEW SECTION */}
       <div className={`space-y-4 ${reportAudience === 'TEACHER' ? 'hidden' : ''}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">

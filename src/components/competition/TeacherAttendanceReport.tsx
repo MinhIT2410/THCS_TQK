@@ -2,14 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { supabase } from '../../lib/supabase/client';
+import { CompetitionReportConfig } from '../../services/competitionReportConfigService';
 
 type Row = { id:string; teacher_id:string; teacher_name:string; rule_code:string; occurred_at:string; session:string; period_number:number; class_name:string|null; minutes:number|null; note:string|null };
 type Saved = { id:string; period_label:string; period_start:string; period_end:string; report_data: {rows:Row[]}; created_at:string };
-type Props = { periodType:'WEEK'|'MONTH'|'SEMESTER'|'YEAR'; periodLabel:string; start:string; end:string; valid:boolean; exportOnly?:boolean };
+type Props = { periodType:'WEEK'|'MONTH'|'SEMESTER'|'YEAR'; periodLabel:string; start:string; end:string; valid:boolean; exportOnly?:boolean; reportConfig?:CompetitionReportConfig; academicYearName?:string; creatorName?:string };
 const names:Record<string,string>={LATE:'Đi trễ',ABSENT_EXCUSED:'Vắng tiết có phép',ABSENT_UNEXCUSED:'Vắng tiết không phép',EARLY:'Rời tiết sớm'};
 const formatDate = (date:string) => new Date(date).toLocaleString('vi-VN');
 
-export default function TeacherAttendanceReport({periodType,periodLabel,start,end,valid,exportOnly}:Props) {
+export default function TeacherAttendanceReport({periodType,periodLabel,start,end,valid,exportOnly,reportConfig,academicYearName,creatorName}:Props) {
  const [rows,setRows]=useState<Row[]>([]);
  const [history,setHistory]=useState<Saved[]>([]);
  const [selectedTeacher,setSelectedTeacher]=useState('ALL');
@@ -77,12 +78,26 @@ export default function TeacherAttendanceReport({periodType,periodLabel,start,en
   {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
   {success&&<p role="status" className="text-sm text-green-700">{success}</p>}
   {loading?<p className="text-sm text-slate-500">Đang tải chuyên cần giáo viên...</p>:!valid?<p className="text-sm text-amber-700">Chưa có ngày bắt đầu/kết thúc kỳ báo cáo.</p>:
-   <div ref={printRef} className="bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-4 text-sm">
-    <div className="text-center"><div className="font-semibold">TRƯỜNG THCS TRẦN QUANG KHẢI</div><h3 className="text-lg font-bold mt-3">BÁO CÁO CHUYÊN CẦN GIÁO VIÊN</h3><div>{displayLabel}</div><div>{displayStart} – {displayEnd}</div></div>
-    <p className="font-semibold">Tổng số ghi nhận: {displayRows.length} lượt</p>
-    <div className="overflow-x-auto"><table className="w-full border-collapse text-xs"><thead><tr>{['Giáo viên','Trễ','Phút trễ','Vắng phép','Vắng KP','Về sớm'].map(s=><th key={s} className="border p-2 text-left">{s}</th>)}</tr></thead><tbody>{displaySummary.map(s=><tr key={s.name}><td className="border p-2">{s.name}</td>{[s.late,s.minutes,s.excused,s.unexcused,s.early].map((n,i)=><td key={i} className="border p-2">{n}</td>)}</tr>)}</tbody></table></div>
-    <h4 className="font-bold">Chi tiết ghi nhận</h4>
-    <div className="overflow-x-auto"><table className="w-full border-collapse text-xs"><thead><tr>{['Ngày giờ','Giáo viên','Nội dung','Buổi / Tiết','Lớp','Phút','Ghi chú'].map(s=><th key={s} className="border p-2 text-left">{s}</th>)}</tr></thead><tbody>{displayRows.map(r=><tr key={r.id}><td className="border p-2">{formatDate(r.occurred_at)}</td><td className="border p-2">{r.teacher_name}</td><td className="border p-2">{names[r.rule_code]||r.rule_code}</td><td className="border p-2">{r.session==='MORNING'?'Sáng':'Chiều'} / {r.period_number}</td><td className="border p-2">{r.class_name||'—'}</td><td className="border p-2">{r.minutes||'—'}</td><td className="border p-2">{r.note||'—'}</td></tr>)}</tbody></table></div>
+   <div ref={printRef} className="bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-xs border border-slate-200 space-y-6 max-w-4xl mx-auto font-sans text-sm">
+    {/* Same report layout, typography, metadata and signature sections as the existing student report. */}
+    <div className="border-b-2 border-slate-800 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
+     <div className="text-center"><p className="font-bold uppercase tracking-wide text-slate-600">{reportConfig?.parent_organization || 'TRƯỜNG THCS TRẦN QUANG KHẢI'}</p><p className="font-bold text-slate-900 text-sm uppercase">{reportConfig?.unit_name || 'GIÁM THỊ'}</p></div>
+     <div className="text-left sm:text-right text-slate-600 space-y-0.5"><p>Năm học: <strong className="text-slate-900">{academicYearName || '—'}</strong></p><p>{savedView ? 'Thời điểm lưu:' : 'Thời điểm lập:'} <strong>{formatDate(savedView?.created_at || new Date().toISOString())}</strong></p></div>
+    </div>
+    <div className="text-center space-y-1 py-2"><h1 className="font-bold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">BẢN TỔNG KẾT CHUYÊN CẦN GIÁO VIÊN</h1><p className="text-xs font-semibold text-slate-600">{displayLabel} — {displayStart} đến {displayEnd}</p></div>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+     <div><span className="text-slate-500">Người lập báo cáo:</span> <strong className="text-slate-900">{creatorName || 'Giám thị phụ trách'}</strong></div>
+     <div><span className="text-slate-500">Phạm vi theo dõi:</span> <strong className="text-slate-900">{selectedTeacher==='ALL' ? 'Tất cả giáo viên' : (teachers.find(t=>t.id===selectedTeacher)?.name || 'Giáo viên')}</strong></div>
+     <div><span className="text-slate-500">Tổng số lượt ghi nhận:</span> <span className="inline-block px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold">{displayRows.length} lượt</span></div>
+    </div>
+    <div className="space-y-2"><h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">I. BẢNG THỐNG KÊ CHUYÊN CẦN THEO GIÁO VIÊN</h4>
+     <div className="overflow-x-auto border border-slate-300 rounded-lg"><table className="w-full text-left text-xs border-collapse"><thead><tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">{['STT','GIÁO VIÊN','ĐI TRỄ','PHÚT TRỄ','VẮNG CÓ PHÉP','VẮNG KHÔNG PHÉP','RỜI SỚM'].map(x=><th key={x} className="p-2.5 border-r border-slate-300">{x}</th>)}</tr></thead><tbody className="divide-y divide-slate-200 text-slate-800">{displaySummary.map((r,i)=><tr key={r.name} className="align-top"><td className="p-2.5 text-center border-r border-slate-200">{i+1}</td><td className="p-2.5 font-bold border-r border-slate-200">{r.name}</td>{[r.late,r.minutes,r.excused,r.unexcused,r.early].map((n,j)=><td key={j} className="p-2.5 text-center border-r border-slate-200">{n || '—'}</td>)}</tr>)}{displaySummary.length===0&&<tr><td colSpan={7} className="p-4 text-center italic text-slate-400">Không có ghi nhận trong kỳ</td></tr>}</tbody></table></div>
+    </div>
+    <div className="space-y-2"><h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">II. CHI TIẾT CÁC LƯỢT GHI NHẬN</h4>
+     <div className="overflow-x-auto border border-slate-300 rounded-lg"><table className="w-full text-left text-xs border-collapse"><thead><tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">{['STT','GIÁO VIÊN','NỘI DUNG / THỜI GIAN / GHI CHÚ'].map(x=><th key={x} className="p-2.5 border-r border-slate-300">{x}</th>)}</tr></thead><tbody className="divide-y divide-slate-200 text-slate-800">{displayRows.map((r,i)=><tr key={r.id} className="align-top"><td className="p-2.5 text-center border-r border-slate-200">{i+1}</td><td className="p-2.5 font-bold border-r border-slate-200">{r.teacher_name}</td><td className="p-2.5 leading-relaxed"><span className="font-semibold">{names[r.rule_code]||r.rule_code}</span> — <span className="font-mono text-[11px] text-slate-600">{formatDate(r.occurred_at)}</span><div className="text-slate-600">{r.session==='MORNING'?'Sáng':'Chiều'} · Tiết {r.period_number}{r.class_name?` · Lớp ${r.class_name}`:''}{r.minutes?` · ${r.minutes} phút`:''}</div>{r.note&&<div className="italic text-slate-600">{r.note}</div>}</td></tr>)}{displayRows.length===0&&<tr><td colSpan={3} className="p-4 text-center italic text-slate-400">Không có ghi nhận</td></tr>}</tbody></table></div>
+    </div>
+    <div data-pdf-section="notes" className="space-y-2 pt-2"><h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">{reportConfig?.summary_section_title || 'III. NHẬN XÉT & TỔNG KẾT CỦA GIÁM THỊ'}</h4><div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-400 italic min-h-[60px]">Không có nhận xét bổ sung.</div></div>
+    <div data-pdf-section="signatures" className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 text-xs text-center"><div className="flex flex-col items-center"><p className="font-bold uppercase text-slate-700">{reportConfig?.approver_title || 'BAN GIÁM HIỆU / XÁC NHẬN'}</p><p className="text-[11px] text-slate-400">(Ký và ghi rõ họ tên)</p><p className="text-slate-300 italic mt-28">................................................</p></div><div className="flex flex-col items-center"><p className="font-bold uppercase text-slate-700">{reportConfig?.reporter_title || 'NGƯỜI LẬP BÁO CÁO'}</p><p className="text-[11px] text-slate-400">(Ký và ghi rõ họ tên)</p><p className="font-bold text-slate-900 mt-28">{creatorName || 'Giám thị phụ trách'}</p></div></div>
    </div>}
   {!exportOnly&&<div className={box}><h4 className="font-bold text-sm mb-2">Báo cáo giáo viên đã lưu</h4>{history.length===0?<p className="text-xs text-slate-500">Chưa có báo cáo.</p>:<div className="space-y-2">{history.map(h=><button key={h.id} type="button" onClick={()=>setSavedView(h)} className="block w-full text-left text-xs rounded-lg border p-2 hover:bg-slate-50 dark:hover:bg-slate-800">{h.period_label} — {formatDate(h.created_at)} ({h.report_data?.rows?.length||0} lượt)</button>)}</div>}{savedView&&<button type="button" onClick={()=>setSavedView(null)} className="text-xs underline mt-3">Quay lại dữ liệu hiện tại</button>}</div>}
  </div>;
