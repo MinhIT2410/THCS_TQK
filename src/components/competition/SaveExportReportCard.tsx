@@ -39,6 +39,7 @@ import {
 import LoadingState from '../common/LoadingState';
 import EmptyState from '../common/EmptyState';
 import { ReportDocument } from './ReportDocument';
+import TeacherAttendanceReport from './TeacherAttendanceReport';
 
 interface SaveExportReportCardProps {
   allowedClassIds?: string[];
@@ -266,6 +267,7 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
   
   // Period Filters State
   const [periodType, setPeriodType] = useState<ReportPeriodType>('WEEK');
+  const [reportAudience, setReportAudience] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
   const [selectedSemester, setSelectedSemester] = useState<number>(1);
   const [academicTerms, setAcademicTerms] = useState<AcademicTermItem[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
@@ -1053,6 +1055,7 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
             <span>1. Chọn loại kỳ báo cáo</span>
           </label>
 
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex p-1 bg-slate-200/80 dark:bg-slate-900 rounded-xl gap-1 w-full sm:w-auto max-w-md">
             <button
               type="button"
@@ -1099,10 +1102,14 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
               Năm học
             </button>
           </div>
+          {!exportOnly && <div className="inline-flex p-1 bg-slate-200/80 dark:bg-slate-900 rounded-xl gap-1" aria-label="Đối tượng báo cáo">
+            {(['STUDENT','TEACHER'] as const).map(a => <button key={a} type="button" onClick={() => setReportAudience(a)} className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${reportAudience === a ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>{a === 'STUDENT' ? 'Học sinh' : 'Giáo viên'}</button>)}
+          </div>}
+          </div>
         </div>
 
         {/* ROW 2: SUB-PICKER, GRADE & CLASS SELECTOR */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1 ${reportAudience === 'TEACHER' ? 'hidden' : ''}`}>
           {/* DYNAMIC SUB-PICKER BASED ON PERIOD TYPE */}
           <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1246,8 +1253,9 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
         )}
       </div>
 
+      {reportAudience === 'TEACHER' && <TeacherAttendanceReport periodType={periodType} periodLabel={currentPeriodInfo.period_label} start={currentPeriodInfo.period_start} end={currentPeriodInfo.period_end} valid={currentPeriodInfo.hasValidDates} exportOnly={exportOnly} />}
       {/* REPORT PREVIEW SECTION */}
-      <div className="space-y-4">
+      <div className={`space-y-4 ${reportAudience === 'TEACHER' ? 'hidden' : ''}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
           <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
             <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -1304,7 +1312,7 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
       </div>
 
       {/* SAVED REPORT HISTORY SECTION */}
-      {!exportOnly && (
+      {!exportOnly && reportAudience === 'STUDENT' && (
       <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -1394,7 +1402,7 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
       )}
 
       {/* DETAIL SNAPSHOT MODAL */}
-      {selectedDetailReport && (
+      {reportAudience === 'STUDENT' && selectedDetailReport && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-hidden">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import TeacherAttendanceForm from './TeacherAttendanceForm';
 import { 
   Search, 
   UserCheck, 
@@ -83,7 +84,7 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
   const { user, hasAnyRole } = useAuth();
 
   // Target Mode state: 'STUDENT' (Cá nhân) vs 'UNIT' (Chi đội / Tập thể)
-  const [targetMode, setTargetMode] = useState<'STUDENT' | 'UNIT'>('STUDENT');
+  const [targetMode, setTargetMode] = useState<'STUDENT' | 'UNIT' | 'TEACHER'>('STUDENT');
 
   // System auto-detected state
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -864,7 +865,7 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className={`space-y-6 ${targetMode === 'TEACHER' ? '[&>div:not(:first-child)]:hidden' : ''}`}>
         {/* Step 1: Chọn đối tượng ghi nhận */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -875,7 +876,7 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
             <span className="text-xs text-slate-400 font-normal font-sans">Thao tác nhanh, chọn phương thức bên dưới</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80">
+          <div className="grid grid-cols-3 gap-1 sm:gap-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80">
             <button
               type="button"
               onClick={() => {
@@ -909,10 +910,15 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
               <Building2 className="w-4 h-4" />
               <span>Chi đội / Tập thể</span>
             </button>
+            <button type="button" onClick={() => { setTargetMode('TEACHER'); setSelectedRuleId(''); setSelectedRule(null); }}
+              className={`py-3 px-2 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 transition-all cursor-pointer font-sans ${targetMode === 'TEACHER' ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-md' : 'text-slate-600 dark:text-slate-400'}`}>
+              <UserCheck className="w-4 h-4"/><span>Giáo viên</span>
+            </button>
           </div>
 
+          {targetMode === 'TEACHER' && <TeacherAttendanceForm />}
           {/* Target Selector */}
-          {targetMode === 'STUDENT' ? (
+          {targetMode === 'TEACHER' ? null : targetMode === 'STUDENT' ? (
             <div className="space-y-3 pt-2">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Tìm theo tên hoặc mã học sinh <span className="text-red-500">*</span>
