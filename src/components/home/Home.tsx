@@ -21,6 +21,8 @@ import { deepMerge } from '../../utils/deepMerge';
 import RadioProgramBanner from './RadioProgramBanner';
 import RadioProgramPlayer from './RadioProgramPlayer';
 import EditableBlock from '../editable/EditableBlock';
+import { movementService } from '../../services/movementService';
+import type { MovementCampaign } from '../../types/movement';
 
 interface HomeProps {
   news: NewsItem[];
@@ -42,6 +44,27 @@ export default function Home({
   const navigate = useNavigate();
 
   const [publishedBanners, setPublishedBanners] = useState<HomeBanner[]>([]);
+  const [latestTimelineCampaigns, setLatestTimelineCampaigns] = useState<MovementCampaign[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(true);
+  const [timelineError, setTimelineError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    movementService.getPublishedCampaigns()
+      .then((items) => {
+        if (!active) return;
+        setLatestTimelineCampaigns(items
+          .filter((item) => item.campaign_type !== 'thuong_xuyen' && Boolean(item.start_date))
+          .sort((a, b) => new Date(b.start_date!).getTime() - new Date(a.start_date!).getTime() || a.id.localeCompare(b.id))
+          .slice(0, 4));
+      })
+      .catch((err) => {
+        console.error('Cannot load homepage timeline campaigns:', err);
+        if (active) setTimelineError(true);
+      })
+      .finally(() => { if (active) setTimelineLoading(false); });
+    return () => { active = false; };
+  }, []);
   
   // CMS overrides for radio program
   const { overrides, status, saveOverride, resetOverride, error } = useHomeCmsData();
@@ -263,9 +286,6 @@ export default function Home({
     };
   }, []);
 
-  // Get active activities (max 2)
-  const activeActivities = activities.filter(a => a.status === 'ongoing').slice(0, 2);
-  const displayActivities = activeActivities.length > 0 ? activeActivities : activities.slice(0, 2);
 
   // Document categories map
   const docCategoryMap: Record<string, string> = {
@@ -428,7 +448,7 @@ export default function Home({
               </p>
             </div>
             <button
-              onClick={() => onNavigate('activities')}
+              onClick={() => navigate('/hoat-dong')}
               id="view-all-activities-btn"
               className="flex items-center space-x-1 text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline mt-2 sm:mt-0 transition-colors"
             >
@@ -438,54 +458,42 @@ export default function Home({
           </div>
         </EditableBlock>
 
+          {timelineLoading && <p className="text-sm text-slate-500" role="status">Đang tải hoạt động...</p>}
+          {timelineError && <p className="text-sm text-red-600" role="alert">Chưa thể tải hoạt động từ trang Hoạt động.</p>}
+          {!timelineLoading && !timelineError && latestTimelineCampaigns.length === 0 && (
+            <p className="text-sm text-slate-500">Chưa có hoạt động theo mốc thời gian được công bố.</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {displayActivities.map((act, idx) => (
-              <motion.div
-                key={act.id}
-                id={act.id}
-                initial={{ opacity: 0, x: idx === 0 ? -20 : 20 }}
+            {latestTimelineCampaigns.map((campaign, idx) => (
+              <motion.article
+                key={campaign.id}
+                initial={{ opacity: 0, x: idx % 2 === 0 ? -20 : 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
                 className="rounded-[2rem] border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 p-6 flex flex-col sm:flex-row gap-6 shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <div className="w-full sm:w-44 h-44 shrink-0 rounded-2xl overflow-hidden bg-slate-100 relative">
-                  <img 
-                    src={act.image} 
-                    alt={act.title} 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                  <img src={campaign.cover_image_url || DEFAULT_IMAGES.newsThumbnail} alt={campaign.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   <span className="absolute top-3 left-3 uppercase text-[9px] font-extrabold px-2.5 py-1 rounded-full bg-blue-600 text-white shadow-md">
-                    Đang chạy
+                    {campaign.status === 'dang_dien_ra' ? 'Đang diễn ra' : campaign.status === 'sap_dien_ra' ? 'Sắp diễn ra' : 'Đã kết thúc'}
                   </span>
                 </div>
                 <div className="flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center space-x-1">
-                      <Sparkles className="h-3 w-3 animate-pulse text-red-500" />
-                      <span>Thời gian: {act.date}</span>
+                      <Calendar className="h-3 w-3" />
+                      <span>Thời gian: {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString('vi-VN') : '---'}{campaign.end_date ? ` – ${new Date(campaign.end_date).toLocaleDateString('vi-VN')}` : ''}</span>
                     </span>
-                    <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white leading-tight">
-                      {act.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
-                      {act.description}
-                    </p>
+                    <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white leading-tight">{campaign.title}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">{campaign.summary || 'Xem thông tin chi tiết hoạt động.'}</p>
                   </div>
-                  
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                      Đã có <strong className="text-slate-700 dark:text-slate-300 font-bold">{act.participantsCount}+</strong> tham gia
-                    </span>
-                    <button
-                      onClick={() => onSelectActivity(act)}
-                      className="rounded-xl bg-blue-50 text-blue-600 px-4 py-2 text-xs font-bold hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors"
-                    >
-                      Đăng ký ngay
+                  <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                    <button onClick={() => navigate(`/hoat-dong/${campaign.slug}`)} className="rounded-xl bg-blue-50 text-blue-600 px-4 py-2 text-xs font-bold hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/40 transition-colors">
+                      Xem chi tiết
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </motion.article>
             ))}
           </div>
         </div>
