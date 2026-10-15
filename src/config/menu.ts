@@ -20,12 +20,6 @@ export const NAV_MENU: MenuItem[] = [
     showInNavbar: true,
   },
   {
-    title: 'Tin tức',
-    path: ROUTES.NEWS,
-    id: 'news',
-    showInNavbar: true,
-  },
-  {
     title: 'Hoạt động',
     path: ROUTES.ACTIVITIES,
     id: 'activities',
@@ -47,6 +41,12 @@ export const NAV_MENU: MenuItem[] = [
     title: 'Thi đua',
     path: ROUTES.COMPETITION,
     id: 'competition',
+    showInNavbar: true,
+  },
+  {
+    title: 'Mở rộng',
+    path: ROUTES.NEWS,
+    id: 'news',
     showInNavbar: true,
   },
 ];

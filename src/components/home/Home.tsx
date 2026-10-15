@@ -56,7 +56,7 @@ export default function Home({
         setLatestTimelineCampaigns(items
           .filter((item) => item.campaign_type !== 'thuong_xuyen' && Boolean(item.start_date))
           .sort((a, b) => new Date(b.start_date!).getTime() - new Date(a.start_date!).getTime() || a.id.localeCompare(b.id))
-          .slice(0, 4));
+          .slice(0, 6));
       })
       .catch((err) => {
         console.error('Cannot load homepage timeline campaigns:', err);
@@ -318,6 +318,8 @@ export default function Home({
         onListenClick={handleListenClick}
       />
 
+      {/* Homepage news hidden; news routes, data, and CMS settings remain unchanged. */}
+      {false && (
       {/* 3. Featured News & Announcements Grid */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <EditableBlock
@@ -421,6 +423,8 @@ export default function Home({
           </div>
         )}
       </section>
+
+      )}
 
       {/* 4. Movements & Activities Tracker (Call to Action) */}
       <section className="bg-blue-900/5 dark:bg-blue-950/10 py-16 transition-colors duration-300">
