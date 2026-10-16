@@ -16,6 +16,7 @@ interface ClassEntity {
   grade_level_id: string | null;
   academic_year_id: string | null;
   expected_capacity: number | null;
+  actual_enrollment: number | null;
   primary_classroom_id: string | null;
   is_active: boolean;
   notes: string | null;
@@ -329,6 +330,7 @@ export default function ClassesTab() {
                 <th className="p-4 font-bold text-slate-500">Khối</th>
                 <th className="p-4 font-bold text-slate-500">Năm học</th>
                 <th className="p-4 font-bold text-slate-500">Sĩ số dự kiến</th>
+                <th className="p-4 font-bold text-slate-500">Sĩ số thực tế</th>
                 <th className="p-4 font-bold text-slate-500">Phòng học chính</th>
                 <th className="p-4 font-bold text-slate-500 text-center">Trạng thái</th>
                 <th className="p-4 font-bold text-slate-500 text-right">Thao tác</th>
@@ -344,6 +346,7 @@ export default function ClassesTab() {
                     {cls.academic_years?.name || <span className="text-slate-400 italic">Chưa xác định</span>}
                   </td>
                   <td className="p-4 text-slate-600 dark:text-slate-400 font-bold">{cls.expected_capacity ?? '-'} học sinh</td>
+                  <td className="p-4 font-bold text-blue-700 dark:text-blue-400">{cls.actual_enrollment ?? '—'} học sinh</td>
                   <td className="p-4 text-slate-600 dark:text-slate-400">{cls.classrooms?.name || '-'}</td>
                   <td className="p-4 text-center">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${

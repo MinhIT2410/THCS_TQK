@@ -377,17 +377,21 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
         });
         setHomeroomTeacherMap(hMap);
 
-        // Fetch Class Student Enrollments
+        // Read the database-maintained class-size snapshot (one row per class).
+        // Avoid fetching thousands of student_enrollments on every report load.
         if (currentYear?.id) {
-          const { data: enrollData } = await supabase
-            .from('student_enrollments')
-            .select('class_id')
+          const { data: classCounts, error: countError } = await supabase
+            .from('classes')
+            .select('id, actual_enrollment')
             .eq('academic_year_id', currentYear.id);
 
+          if (countError) {
+            throw new Error(`Không tải được sĩ số thực tế: ${countError.message}`);
+          }
           const eMap = new Map<string, number>();
-          (enrollData || []).forEach((item: any) => {
-            if (item.class_id) {
-              eMap.set(item.class_id, (eMap.get(item.class_id) || 0) + 1);
+          (classCounts || []).forEach((cls) => {
+            if (cls.id && typeof cls.actual_enrollment === 'number') {
+              eMap.set(cls.id, cls.actual_enrollment);
             }
           });
           setClassEnrollmentMap(eMap);
@@ -440,6 +444,8 @@ export default function SaveExportReportCard({ allowedClassIds, exportOnly = fal
 
       } catch (err) {
         console.error('Lỗi khởi tạo Thẻ Báo cáo:', err);
+        setErrorToast(err instanceof Error ? err.message : 'Không thể tải dữ liệu báo cáo.');
+        setErrorToast(err instanceof Error ? err.message : 'Không thể tải dữ liệu báo cáo.');
       } finally {
         setLoadingInitial(false);
       }
