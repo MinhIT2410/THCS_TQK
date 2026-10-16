@@ -1,14 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Plus, Search, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 
 type Teacher = { id: string; full_name: string };
 type Rule = { code: string; name: string };
+const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
 const nowLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 
 export default function TeacherAttendanceForm() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [teacherId, setTeacherId] = useState('');
+  const [teacherSearch, setTeacherSearch] = useState('');
+  const [showTeacherResults, setShowTeacherResults] = useState(false);
+  const teacherSearchRef = useRef<HTMLDivElement>(null);
+  const teacherInputRef = useRef<HTMLInputElement>(null);
   const [ruleCode, setRuleCode] = useState('LATE');
   const [occurredAt, setOccurredAt] = useState(nowLocal);
   const [session, setSession] = useState('MORNING');
@@ -31,6 +37,33 @@ export default function TeacherAttendanceForm() {
     }).catch(e => { if (live) setError(String(e)); });
     return () => { live = false; };
   }, []);
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (teacherSearchRef.current && !teacherSearchRef.current.contains(event.target as Node)) {
+        setShowTeacherResults(false);
+      }
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, []);
+  const selectedTeacher = teachers.find(t => t.id === teacherId);
+  const matchingTeachers = useMemo(() => {
+    const keyword = normalizeSearch(teacherSearch);
+    if (!keyword) return [];
+    return teachers.filter(t => normalizeSearch(t.full_name).includes(keyword)).slice(0, 30);
+  }, [teachers, teacherSearch]);
+  const selectTeacher = (teacher: Teacher) => {
+    setTeacherId(teacher.id);
+    setTeacherSearch('');
+    setShowTeacherResults(false);
+    setError('');
+  };
+  const clearTeacher = () => {
+    setTeacherId('');
+    setTeacherSearch('');
+    setShowTeacherResults(false);
+    teacherInputRef.current?.focus();
+  };
   const needMinutes = ruleCode === 'LATE' || ruleCode === 'EARLY';
   const save = async () => { setError(''); setMessage('');
     const teacher = teachers.find(t => t.id === teacherId);
@@ -54,7 +87,48 @@ export default function TeacherAttendanceForm() {
     <div className="font-bold text-slate-900 dark:text-white">Ghi nhận chuyên cần giáo viên</div>
     <p className="text-xs text-slate-500">Giám thị lưu là ghi nhận chính thức, không cần duyệt và không ảnh hưởng điểm thi đua lớp.</p>
     <div className="space-y-4">
-      <label className="block text-sm font-medium">Giáo viên *<select required className={field} value={teacherId} onChange={e=>setTeacherId(e.target.value)}><option value="">Chọn giáo viên</option>{teachers.map(t=><option key={t.id} value={t.id}>{t.full_name}</option>)}</select></label>
+      <div className="space-y-2">
+        <label htmlFor="teacher-attendance-search" className="block text-sm font-medium">Tìm theo tên giáo viên <span className="text-red-500">*</span></label>
+        <div ref={teacherSearchRef} className="relative">
+          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" aria-hidden="true" />
+          <input
+            id="teacher-attendance-search"
+            ref={teacherInputRef}
+            type="text"
+            autoComplete="off"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+            value={teacherSearch}
+            onChange={e => { setTeacherSearch(e.target.value); setShowTeacherResults(true); }}
+            onFocus={() => setShowTeacherResults(true)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') setShowTeacherResults(false);
+              if (e.key === 'Enter' && showTeacherResults && matchingTeachers.length === 1) {
+                e.preventDefault();
+                selectTeacher(matchingTeachers[0]);
+              }
+            }}
+            placeholder="Nhập tên giáo viên để tìm (có thể không dấu)..."
+            aria-expanded={showTeacherResults && !!teacherSearch.trim()}
+            aria-controls="teacher-attendance-results"
+          />
+          {showTeacherResults && teacherSearch.trim() && (
+            <div id="teacher-attendance-results" className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+              {matchingTeachers.length ? matchingTeachers.map(t => (
+                <button key={t.id} type="button" onClick={() => selectTeacher(t)} className="w-full text-left p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <span className="font-semibold text-sm text-slate-900 dark:text-white">{t.full_name}</span>
+                  {teacherId === t.id ? <Check className="w-4 h-4 text-emerald-600" /> : <Plus className="w-4 h-4 text-slate-400" />}
+                </button>
+              )) : <p className="p-3 text-sm text-slate-500">Không tìm thấy giáo viên phù hợp.</p>}
+            </div>
+          )}
+        </div>
+        {selectedTeacher && (
+          <div className="flex items-center justify-between rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2">
+            <div className="min-w-0"><span className="text-xs text-slate-500">Đã chọn: </span><span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{selectedTeacher.full_name}</span></div>
+            <button type="button" onClick={clearTeacher} aria-label="Bỏ chọn giáo viên" className="p-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+      </div>
       <label className="block text-sm font-medium">Quy tắc chuyên cần *<select className={field} value={ruleCode} onChange={e=>setRuleCode(e.target.value)}>{rules.map(r=><option key={r.code} value={r.code}>{r.name}</option>)}</select></label>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label className="text-sm font-medium">Thời gian *<input required className={field} type="datetime-local" value={occurredAt} onChange={e=>setOccurredAt(e.target.value)}/></label>
