@@ -24,9 +24,46 @@ import { useAuth } from '../../../features/auth/AuthContext';
 import { competitionService } from '../../../services/competitionService';
 import { CompetitionIncident, IncidentStatus, INCIDENT_STATUS_LABELS } from '../../../types/competition';
 
+type TeacherEvent = { id: string; teacher_name: string; rule_code: string; occurred_at: string; session: string; period_number: number; class_name: string | null; minutes: number | null; note: string | null; recorded_by: string; };
+const teacherRuleLabels: Record<string,string> = { LATE:'Đi trễ', ABSENT_EXCUSED:'Vắng tiết có phép', ABSENT_UNEXCUSED:'Vắng tiết không phép', EARLY:'Rời tiết sớm' };
+const localDateTime = (value: string) => { const d = new Date(value); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+
+
 export default function IncidentsHistoryTab() {
   const { user } = useAuth();
   const [canEditNotes, setCanEditNotes] = useState(false);
+  const [teacherEvents, setTeacherEvents] = useState<TeacherEvent[]>([]);
+  const [teacherError, setTeacherError] = useState('');
+  const [editTeacher, setEditTeacher] = useState<TeacherEvent | null>(null);
+  const [teacherDraft, setTeacherDraft] = useState({ rule_code:'LATE', occurred_at:'', session:'MORNING', period_number:'1', class_name:'', minutes:'', note:'', reason:'' });
+  const [teacherEditError, setTeacherEditError] = useState('');
+  const openTeacherEditor = (item: TeacherEvent) => {
+    setEditTeacher(item); setTeacherEditError('');
+    setTeacherDraft({rule_code:item.rule_code, occurred_at:localDateTime(item.occurred_at), session:item.session, period_number:String(item.period_number), class_name:item.class_name||'', minutes:item.minutes == null ? '' : String(item.minutes), note:item.note||'', reason:''});
+  };
+  const saveTeacherEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTeacher || !canEditNotes || actionLoading) return;
+    const needsMinutes = ['LATE','EARLY'].includes(teacherDraft.rule_code);
+    const minutes = needsMinutes ? Number(teacherDraft.minutes) : null;
+    if (!teacherDraft.reason.trim()) { setTeacherEditError('Cần nhập lý do chỉnh sửa.'); return; }
+    if (!teacherDraft.occurred_at || Number.isNaN(Date.parse(teacherDraft.occurred_at))) { setTeacherEditError('Thời gian không hợp lệ.'); return; }
+    if (!Number.isInteger(Number(teacherDraft.period_number)) || Number(teacherDraft.period_number)<1 || Number(teacherDraft.period_number)>10) { setTeacherEditError('Tiết phải từ 1 đến 10.'); return; }
+    if (needsMinutes && (!Number.isInteger(minutes) || minutes!<1 || minutes!>240)) { setTeacherEditError('Số phút phải từ 1 đến 240.'); return; }
+    setActionLoading(true); setTeacherEditError('');
+    try {
+      const { error } = await supabase.rpc('edit_teacher_attendance_record', {
+        p_record_id:editTeacher.id, p_rule_code:teacherDraft.rule_code,
+        p_occurred_at:new Date(teacherDraft.occurred_at).toISOString(), p_session:teacherDraft.session,
+        p_period_number:Number(teacherDraft.period_number), p_class_name:teacherDraft.class_name.trim()||null,
+        p_minutes:minutes, p_note:teacherDraft.note.trim()||null, p_reason:teacherDraft.reason.trim(),
+      });
+      if (error) throw error;
+      setEditTeacher(null); setAlert({type:'success',text:'Đã cập nhật ghi nhận giáo viên và lưu lịch sử chỉnh sửa.'});
+      await fetchIncidents();
+    } catch (err:any) { setTeacherEditError(err.message||'Không thể cập nhật ghi nhận giáo viên.'); }
+    finally { setActionLoading(false); }
+  };
   const [editIncident, setEditIncident] = useState<CompetitionIncident | null>(null);
   const [description, setDescription] = useState('');
   const [evidenceNote, setEvidenceNote] = useState('');
@@ -94,6 +131,12 @@ export default function IncidentsHistoryTab() {
       }
       const list = await competitionService.getIncidents(filterObj);
       setIncidents(list);
+      // Teacher attendance is a separate official ledger; it must not be treated as a scored incident.
+      const { data: teacherData, error: teacherLoadError } = await supabase.from('teacher_attendance_records')
+        .select('id,teacher_name,rule_code,occurred_at,session,period_number,class_name,minutes,note,recorded_by')
+        .order('occurred_at',{ascending:false}).limit(500);
+      if (teacherLoadError) { setTeacherError(teacherLoadError.message); setTeacherEvents([]); }
+      else { setTeacherError(''); setTeacherEvents((teacherData||[]) as TeacherEvent[]); }
     } catch (err: any) {
       console.error('Error fetching incident history:', err);
       setAlert({ type: 'error', text: err.message || 'Lỗi khi tải lịch sử sự việc.' });
@@ -139,6 +182,12 @@ export default function IncidentsHistoryTab() {
       i.unit_name?.toLowerCase().includes(term) ||
       i.rule_name?.toLowerCase().includes(term)
     );
+  });
+
+  const filteredTeacherEvents = teacherEvents.filter(t => {
+    if (statusFilter !== 'ALL' && statusFilter !== 'APPROVED') return false;
+    const keyword = searchTerm.trim().toLocaleLowerCase('vi');
+    return !keyword || [t.teacher_name,teacherRuleLabels[t.rule_code]||t.rule_code,t.class_name||'',t.note||''].some(v=>v.toLocaleLowerCase('vi').includes(keyword));
   });
 
   const getStatusBadge = (status: IncidentStatus) => {
@@ -239,18 +288,33 @@ export default function IncidentsHistoryTab() {
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo tiêu đề, đội viên, chi đội..."
+            placeholder="Tìm sự việc, giáo viên, học sinh, lớp..."
             className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none"
           />
         </div>
       </div>
 
+      {/* Teacher attendance is listed in the same history view but remains independent of student scores. */}
+      {teacherError && <p className="text-xs text-rose-600">Không thể tải nhật ký giáo viên: {teacherError}</p>}
+      {!loading && filteredTeacherEvents.length > 0 && <section className="space-y-3">
+        <h4 className="font-bold text-sm text-slate-800 dark:text-white">Ghi nhận giáo viên ({filteredTeacherEvents.length}{teacherEvents.length===500?' / 500 gần nhất':''})</h4>
+        {filteredTeacherEvents.map(item=><div key={`teacher-${item.id}`} className="rounded-2xl border border-sky-200 dark:border-sky-900 bg-white dark:bg-slate-900 p-5 space-y-2 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2"><span className="rounded-md bg-sky-100 text-sky-800 px-2 py-1 text-[11px] font-bold">GIÁO VIÊN · CHÍNH THỨC</span><span className="text-xs text-slate-500">{new Date(item.occurred_at).toLocaleString('vi-VN')}</span></div>
+            {canEditNotes && <button type="button" onClick={()=>openTeacherEditor(item)} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 flex items-center gap-1"><Pencil className="w-3.5 h-3.5"/> Chỉnh sửa ghi nhận</button>}
+          </div>
+          <p className="font-bold text-slate-900 dark:text-white">{item.teacher_name} — {teacherRuleLabels[item.rule_code]||item.rule_code}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{item.session==='MORNING'?'Sáng':'Chiều'} · Tiết {item.period_number}{item.class_name?` · Lớp ${item.class_name}`:''}{item.minutes?` · ${item.minutes} phút`:''}</p>
+          {item.note && <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">Ghi chú: {item.note}</p>}
+          <p className="text-[11px] text-slate-400">Không tính điểm thi đua lớp · Không áp dụng Hủy & Đảo Điểm</p>
+        </div>)}
+      </section>}
       {/* List */}
       {loading ? (
         <div className="p-12 text-center text-xs text-slate-400 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 animate-pulse">
           Đang tải lịch sử ghi nhận sự việc...
         </div>
-      ) : filteredIncidents.length === 0 ? (
+      ) : filteredIncidents.length === 0 && filteredTeacherEvents.length === 0 ? (
         <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs text-slate-500">
           Không tìm thấy sự việc nào phù hợp với bộ lọc.
         </div>
@@ -385,6 +449,22 @@ export default function IncidentsHistoryTab() {
         </div>
       )}
 
+      {editTeacher && <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <form onSubmit={saveTeacherEdit} role="dialog" aria-modal="true" aria-label="Chỉnh sửa ghi nhận giáo viên" className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-3">
+          <h4 className="font-bold text-lg">Chỉnh sửa ghi nhận giáo viên</h4>
+          <p className="text-sm font-semibold">{editTeacher.teacher_name}</p>
+          <p className="text-xs text-slate-500">Không thay đổi danh tính giáo viên tại đây. Việc liên kết giáo viên chưa rõ tên thực hiện tại mục Ghi nhận.</p>
+          <label className="block text-xs font-semibold">Quy tắc<select value={teacherDraft.rule_code} onChange={e=>setTeacherDraft(v=>({...v,rule_code:e.target.value,minutes:['LATE','EARLY'].includes(e.target.value)?v.minutes:''}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent">{Object.entries(teacherRuleLabels).map(([code,label])=><option key={code} value={code}>{label}</option>)}</select></label>
+          <label className="block text-xs font-semibold">Thời gian<input required type="datetime-local" value={teacherDraft.occurred_at} onChange={e=>setTeacherDraft(v=>({...v,occurred_at:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>
+          <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold">Buổi<select value={teacherDraft.session} onChange={e=>setTeacherDraft(v=>({...v,session:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"><option value="MORNING">Sáng</option><option value="AFTERNOON">Chiều</option></select></label><label className="text-xs font-semibold">Tiết<input required type="number" min="1" max="10" value={teacherDraft.period_number} onChange={e=>setTeacherDraft(v=>({...v,period_number:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label></div>
+          <label className="block text-xs font-semibold">Lớp<input value={teacherDraft.class_name} onChange={e=>setTeacherDraft(v=>({...v,class_name:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>
+          {['LATE','EARLY'].includes(teacherDraft.rule_code) && <label className="block text-xs font-semibold">Số phút<input required type="number" min="1" max="240" value={teacherDraft.minutes} onChange={e=>setTeacherDraft(v=>({...v,minutes:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>}
+          <label className="block text-xs font-semibold">Ghi chú<textarea rows={3} value={teacherDraft.note} onChange={e=>setTeacherDraft(v=>({...v,note:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>
+          <label className="block text-xs font-semibold">Lý do chỉnh sửa *<textarea rows={2} required value={teacherDraft.reason} onChange={e=>setTeacherDraft(v=>({...v,reason:e.target.value}))} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>
+          {teacherEditError && <p role="alert" className="text-xs text-red-600">{teacherEditError}</p>}
+          <div className="flex justify-end gap-2"><button type="button" disabled={actionLoading} onClick={()=>setEditTeacher(null)} className="px-4 py-2 border rounded-xl text-xs">Đóng</button><button type="submit" disabled={actionLoading||!teacherDraft.reason.trim()} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs disabled:opacity-50">{actionLoading?'Đang lưu...':'Lưu chỉnh sửa'}</button></div>
+        </form>
+      </div>}
       {editIncident && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <form onSubmit={saveNotes} role="dialog" aria-modal="true" aria-labelledby="edit-notes-title"
