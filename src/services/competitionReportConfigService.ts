@@ -17,15 +17,38 @@ export interface CompetitionReportConfig {
 }
 
 export const DEFAULT_COMPETITION_REPORT_CONFIG: CompetitionReportConfig = {
-  parent_organization: 'PHÒNG GIÁO DỤC VÀ ĐÀO TẠO',
-  unit_name: 'BAN THI ĐƯA - ĐỘI GIÁM THỊ',
-  report_title: 'BIÊN BẢN TỔNG KẾT VI PHẠM THI ĐƯA HÀNG TUẦN',
+  parent_organization: 'TRƯỜNG THCS TRẦN QUANG KHẢI',
+  unit_name: 'GIÁM THỊ',
+  report_title: 'BẢN TỔNG KẾT VI PHẠM HÀNG TUẦN',
   table_section_title: 'I. BẢNG THỐNG KÊ CHI TIẾT LỖI VI PHẠM THEO LỚP',
   summary_section_title: 'II. NHẬN XÉT & TỔNG KẾT CỦA GIÁM THỊ',
   summary_placeholder: 'Nhập đánh giá nề nếp, tuyên dương/nhắc nhở cụ thể cho các lớp trong tuần...',
   reporter_title: 'NGƯỜI LẬP BÁO CÁO',
   approver_title: 'BAN GIÁM HIỆU / XÁC NHẬN',
 };
+
+/** Presentation-only compatibility for old CMS templates; never rewrites saved settings. */
+export function normalizeCompetitionReportConfig(config: CompetitionReportConfig): CompetitionReportConfig {
+  const legacyOrganization = config.parent_organization?.trim().toUpperCase() === 'PHÒNG GIÁO DỤC VÀ ĐÀO TẠO';
+  const legacyUnit = /^BAN THI (?:ĐƯA|ĐUA) - ĐỘI GIÁM THỊ$/i.test(config.unit_name?.trim() || '');
+  const legacyTitle = /^(?:BIÊN BẢN|BẢN) TỔNG KẾT VI PHẠM(?: THI (?:ĐƯA|ĐUA))? HÀNG TUẦN$/i.test(config.report_title?.trim() || '');
+  return {
+    ...config,
+    parent_organization: legacyOrganization ? DEFAULT_COMPETITION_REPORT_CONFIG.parent_organization : config.parent_organization,
+    unit_name: legacyUnit ? DEFAULT_COMPETITION_REPORT_CONFIG.unit_name : config.unit_name,
+    report_title: legacyTitle ? DEFAULT_COMPETITION_REPORT_CONFIG.report_title : config.report_title,
+  };
+}
+
+/** The report period, not the user's role, determines the printed title. */
+export function getCompetitionReportTitle(config: CompetitionReportConfig, periodType?: string, semester?: number | null): string {
+  const base = normalizeCompetitionReportConfig(config).report_title || DEFAULT_COMPETITION_REPORT_CONFIG.report_title;
+  const periodSuffix = periodType === 'MONTH' ? 'HÀNG THÁNG'
+    : periodType === 'SEMESTER' ? `HỌC KỲ ${semester === 2 ? 'II' : 'I'}`
+    : periodType === 'YEAR' ? 'NĂM HỌC'
+    : 'HÀNG TUẦN';
+  return base.replace(/\s+(?:HÀNG TUẦN|HÀNG THÁNG|HỌC KỲ (?:I|II)|NĂM HỌC)$/i, '') + ' ' + periodSuffix;
+}
 
 const STORAGE_KEY = 'competition_report_config_v1';
 

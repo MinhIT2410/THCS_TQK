@@ -373,10 +373,10 @@ export default function ReportTemplateTab() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 pb-3">
                 <div className="space-y-0.5 text-center">
                   <p className="font-bold uppercase text-[10px] tracking-wide text-slate-500">
-                    {config.parent_organization || 'PHÒNG GIÁO DỤC VÀ ĐÀO TẠO'}
+                    {config.parent_organization || 'TRƯỜNG THCS TRẦN QUANG KHẢI'}
                   </p>
                   <p className="font-bold text-slate-900 text-xs uppercase">
-                    {config.unit_name || 'BAN THI ĐƯA - ĐỘI GIÁM THỊ'}
+                    {config.unit_name || 'GIÁM THỊ'}
                   </p>
                 </div>
                 <div className="text-left sm:text-right space-y-0.5 text-[10px] text-slate-500">
@@ -388,7 +388,7 @@ export default function ReportTemplateTab() {
               {/* Title Section */}
               <div className="text-center space-y-1 py-1">
                 <h2 className="font-bold text-sm sm:text-base text-red-600 uppercase tracking-tight">
-                  {config.report_title || 'BIÊN BẢN TỔNG KẾT VI PHẠM THI ĐƯA HÀNG TUẦN'}
+                  {config.report_title || 'BẢN TỔNG KẾT VI PHẠM HÀNG TUẦN'}
                 </h2>
                 <p className="text-[11px] font-semibold text-slate-500">
                   Tuần 24 — Khối 8

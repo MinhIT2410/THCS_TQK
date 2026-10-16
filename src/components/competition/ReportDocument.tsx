@@ -10,7 +10,9 @@ import {
 } from '../../types/competition';
 import { 
   CompetitionReportConfig, 
-  DEFAULT_COMPETITION_REPORT_CONFIG 
+  DEFAULT_COMPETITION_REPORT_CONFIG,
+  normalizeCompetitionReportConfig,
+  getCompetitionReportTitle
 } from '../../services/competitionReportConfigService';
 import { cleanPeriodLabel } from '../../utils/reportPdfExporter';
 
@@ -32,11 +34,13 @@ export const ReportDocument = forwardRef<HTMLDivElement, ReportDocumentProps>(({
   isSnapshot = false,
 }, ref) => {
   // Merge CMS Config: Prioritize frozen report_config in snapshot, fallback to propConfig, then DEFAULT
-  const config: CompetitionReportConfig = {
+  const rawConfig: CompetitionReportConfig = {
     ...DEFAULT_COMPETITION_REPORT_CONFIG,
     ...(propConfig || {}),
     ...(report.report_config || {}),
   };
+  // Keep historical snapshots exactly as they were saved.
+  const config = isSnapshot ? rawConfig : normalizeCompetitionReportConfig(rawConfig);
 
   const classRows: ClassReportRowSnapshot[] | undefined = report.class_report_rows;
   const legacyStats = report.violation_stats;
@@ -75,7 +79,7 @@ export const ReportDocument = forwardRef<HTMLDivElement, ReportDocumentProps>(({
       {/* REPORT TITLE */}
       <div className="text-center space-y-1 py-2">
         <h1 className="font-bold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">
-          {config.report_title}
+          {isSnapshot ? config.report_title : getCompetitionReportTitle(config, report.period_type, report.semester)}
         </h1>
         <p className="text-xs font-semibold text-slate-600">
           {cleanPeriodLabel(report.period_label || report.week_name)} — {report.grade_name}
