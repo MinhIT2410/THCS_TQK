@@ -24,7 +24,7 @@ import { useAuth } from '../../../features/auth/AuthContext';
 import { competitionService } from '../../../services/competitionService';
 import { CompetitionIncident, IncidentStatus, INCIDENT_STATUS_LABELS } from '../../../types/competition';
 
-type TeacherEvent = { id: string; teacher_name: string; rule_code: string; occurred_at: string; session: string; period_number: number; class_name: string | null; minutes: number | null; note: string | null; recorded_by: string; };
+type TeacherEvent = { id: string; teacher_name: string; rule_code: string; occurred_at: string; session: string; period_number: number; class_name: string | null; minutes: number | null; note: string | null; recorded_by: string; cancelled_at: string | null; cancel_reason: string | null; };
 const teacherRuleLabels: Record<string,string> = { LATE:'Đi trễ', ABSENT_EXCUSED:'Vắng tiết có phép', ABSENT_UNEXCUSED:'Vắng tiết không phép', EARLY:'Rời tiết sớm' };
 const localDateTime = (value: string) => { const d = new Date(value); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
 
@@ -34,6 +34,9 @@ export default function IncidentsHistoryTab() {
   const [canEditNotes, setCanEditNotes] = useState(false);
   const [teacherEvents, setTeacherEvents] = useState<TeacherEvent[]>([]);
   const [teacherError, setTeacherError] = useState('');
+  const [cancelTeacher, setCancelTeacher] = useState<TeacherEvent | null>(null);
+  const [cancelTeacherReason, setCancelTeacherReason] = useState('');
+  const [cancelTeacherError, setCancelTeacherError] = useState('');
   const [editTeacher, setEditTeacher] = useState<TeacherEvent | null>(null);
   const [teacherDraft, setTeacherDraft] = useState({ rule_code:'LATE', occurred_at:'', session:'MORNING', period_number:'1', class_name:'', minutes:'', note:'', reason:'' });
   const [teacherEditError, setTeacherEditError] = useState('');
@@ -62,6 +65,22 @@ export default function IncidentsHistoryTab() {
       setEditTeacher(null); setAlert({type:'success',text:'Đã cập nhật ghi nhận giáo viên và lưu lịch sử chỉnh sửa.'});
       await fetchIncidents();
     } catch (err:any) { setTeacherEditError(err.message||'Không thể cập nhật ghi nhận giáo viên.'); }
+    finally { setActionLoading(false); }
+  };
+  const submitTeacherCancellation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelTeacher || !canEditNotes || actionLoading) return;
+    if (cancelTeacherReason.trim().length < 3) { setCancelTeacherError('Nhập lý do hủy ít nhất 3 ký tự.'); return; }
+    setActionLoading(true); setCancelTeacherError('');
+    try {
+      const { error } = await supabase.rpc('cancel_teacher_attendance_record', {
+        p_record_id: cancelTeacher.id, p_reason: cancelTeacherReason.trim(),
+      });
+      if (error) throw error;
+      setCancelTeacher(null); setCancelTeacherReason('');
+      setAlert({ type: 'success', text: 'Đã hủy ghi nhận giáo viên. Báo cáo sẽ không tính ghi nhận này.' });
+      await fetchIncidents();
+    } catch (err: any) { setCancelTeacherError(err.message || 'Không thể hủy ghi nhận giáo viên.'); }
     finally { setActionLoading(false); }
   };
   const [editIncident, setEditIncident] = useState<CompetitionIncident | null>(null);
@@ -133,7 +152,7 @@ export default function IncidentsHistoryTab() {
       setIncidents(list);
       // Teacher attendance is a separate official ledger; it must not be treated as a scored incident.
       const { data: teacherData, error: teacherLoadError } = await supabase.from('teacher_attendance_records')
-        .select('id,teacher_name,rule_code,occurred_at,session,period_number,class_name,minutes,note,recorded_by')
+        .select('id,teacher_name,rule_code,occurred_at,session,period_number,class_name,minutes,note,recorded_by,cancelled_at,cancel_reason')
         .order('occurred_at',{ascending:false}).limit(500);
       if (teacherLoadError) { setTeacherError(teacherLoadError.message); setTeacherEvents([]); }
       else { setTeacherError(''); setTeacherEvents((teacherData||[]) as TeacherEvent[]); }
@@ -185,7 +204,9 @@ export default function IncidentsHistoryTab() {
   });
 
   const filteredTeacherEvents = teacherEvents.filter(t => {
-    if (statusFilter !== 'ALL' && statusFilter !== 'APPROVED') return false;
+    if (statusFilter === 'APPROVED' && t.cancelled_at) return false;
+    if (statusFilter === 'CANCELLED' && !t.cancelled_at) return false;
+    if (!['ALL','APPROVED','CANCELLED'].includes(statusFilter)) return false;
     const keyword = searchTerm.trim().toLocaleLowerCase('vi');
     return !keyword || [t.teacher_name,teacherRuleLabels[t.rule_code]||t.rule_code,t.class_name||'',t.note||''].some(v=>v.toLocaleLowerCase('vi').includes(keyword));
   });
@@ -300,13 +321,13 @@ export default function IncidentsHistoryTab() {
         <h4 className="font-bold text-sm text-slate-800 dark:text-white">Ghi nhận giáo viên ({filteredTeacherEvents.length}{teacherEvents.length===500?' / 500 gần nhất':''})</h4>
         {filteredTeacherEvents.map(item=><div key={`teacher-${item.id}`} className="rounded-2xl border border-sky-200 dark:border-sky-900 bg-white dark:bg-slate-900 p-5 space-y-2 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2"><span className="rounded-md bg-sky-100 text-sky-800 px-2 py-1 text-[11px] font-bold">GIÁO VIÊN · CHÍNH THỨC</span><span className="text-xs text-slate-500">{new Date(item.occurred_at).toLocaleString('vi-VN')}</span></div>
-            {canEditNotes && <button type="button" onClick={()=>openTeacherEditor(item)} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 flex items-center gap-1"><Pencil className="w-3.5 h-3.5"/> Chỉnh sửa ghi nhận</button>}
+            <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md px-2 py-1 text-[11px] font-bold ${item.cancelled_at ? 'bg-rose-100 text-rose-800' : 'bg-sky-100 text-sky-800'}`}>{item.cancelled_at ? 'GIÁO VIÊN · ĐÃ HỦY' : 'GIÁO VIÊN · CHÍNH THỨC'}</span><span className="text-xs text-slate-500">{new Date(item.occurred_at).toLocaleString('vi-VN')}</span></div>
+            {canEditNotes && !item.cancelled_at && <div className="flex flex-wrap gap-2"><button type="button" onClick={()=>openTeacherEditor(item)} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 flex items-center gap-1"><Pencil className="w-3.5 h-3.5"/> Chỉnh sửa ghi nhận</button><button type="button" onClick={()=>{setCancelTeacher(item);setCancelTeacherReason('');setCancelTeacherError('');}} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700">Hủy ghi nhận</button></div>}
           </div>
           <p className="font-bold text-slate-900 dark:text-white">{item.teacher_name} — {teacherRuleLabels[item.rule_code]||item.rule_code}</p>
           <p className="text-xs text-slate-600 dark:text-slate-300">{item.session==='MORNING'?'Sáng':'Chiều'} · Tiết {item.period_number}{item.class_name?` · Lớp ${item.class_name}`:''}{item.minutes?` · ${item.minutes} phút`:''}</p>
           {item.note && <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">Ghi chú: {item.note}</p>}
-          <p className="text-[11px] text-slate-400">Không tính điểm thi đua lớp · Không áp dụng Hủy & Đảo Điểm</p>
+          {item.cancelled_at ? <p className="text-xs text-rose-700">Đã hủy lúc {new Date(item.cancelled_at).toLocaleString('vi-VN')} · Lý do: {item.cancel_reason || 'Không rõ'} · Không tính vào báo cáo</p> : <p className="text-[11px] text-slate-400">Không tính điểm thi đua lớp · Có thể hủy ghi nhận mà không đảo điểm</p>}
         </div>)}
       </section>}
       {/* List */}
@@ -449,6 +470,16 @@ export default function IncidentsHistoryTab() {
         </div>
       )}
 
+      {cancelTeacher && <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <form onSubmit={submitTeacherCancellation} role="dialog" aria-modal="true" aria-label="Hủy ghi nhận giáo viên" className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg space-y-3">
+          <h4 className="font-bold text-lg">Hủy ghi nhận giáo viên</h4>
+          <p className="text-sm">{cancelTeacher.teacher_name} — {teacherRuleLabels[cancelTeacher.rule_code] || cancelTeacher.rule_code}</p>
+          <p className="text-xs text-slate-500">Ghi nhận được giữ lại trong Nhật ký để tra cứu nhưng không tính vào báo cáo chuyên cần. Không ảnh hưởng điểm thi đua lớp.</p>
+          <label className="block text-xs font-semibold">Lý do hủy *<textarea rows={3} required minLength={3} maxLength={1000} value={cancelTeacherReason} onChange={e=>setCancelTeacherReason(e.target.value)} className="block w-full mt-1 p-2 border rounded-lg bg-transparent"/></label>
+          {cancelTeacherError && <p role="alert" className="text-xs text-red-600">{cancelTeacherError}</p>}
+          <div className="flex justify-end gap-2"><button type="button" disabled={actionLoading} onClick={()=>setCancelTeacher(null)} className="px-4 py-2 border rounded-xl text-xs">Đóng</button><button type="submit" disabled={actionLoading || cancelTeacherReason.trim().length < 3} className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-semibold disabled:opacity-50">{actionLoading?'Đang hủy...':'Xác nhận hủy'}</button></div>
+        </form>
+      </div>}
       {editTeacher && <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
         <form onSubmit={saveTeacherEdit} role="dialog" aria-modal="true" aria-label="Chỉnh sửa ghi nhận giáo viên" className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-3">
           <h4 className="font-bold text-lg">Chỉnh sửa ghi nhận giáo viên</h4>

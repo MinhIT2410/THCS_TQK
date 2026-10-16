@@ -35,7 +35,7 @@ export default function TeacherAttendanceReport({periodType,periodLabel,start,en
   let live=true;setLoading(true);setError('');
   const from=`${start}T00:00:00+07:00`;
   const until=new Date(`${end}T00:00:00+07:00`);until.setUTCDate(until.getUTCDate()+1);
-  supabase.from('teacher_attendance_records').select('id,teacher_id,teacher_name,identity_status,subject_name,rule_code,occurred_at,session,period_number,class_name,minutes,note').gte('occurred_at',from).lt('occurred_at',until.toISOString()).order('occurred_at',{ascending:false}).range(0,9999)
+  supabase.from('teacher_attendance_records').select('id,teacher_id,teacher_name,identity_status,subject_name,rule_code,occurred_at,session,period_number,class_name,minutes,note').is('cancelled_at',null).gte('occurred_at',from).lt('occurred_at',until.toISOString()).order('occurred_at',{ascending:false}).range(0,9999)
    .then(({data,error:e})=>{if(!live)return;if(e)setError(e.message);else setRows((data||[]) as Row[]);setLoading(false);});
   return()=>{live=false;};
  },[start,end,valid]);
