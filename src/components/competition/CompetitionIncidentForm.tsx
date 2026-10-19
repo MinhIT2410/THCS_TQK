@@ -459,64 +459,15 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
         : (r.effect_scope === 'UNIT_ONLY' || r.effect_scope === 'BOTH')
     );
 
-    const studentKeywords = [
-      ['trễ', 'muộn', 'late', 'đi học trễ'],
-      ['đồng phục', 'trang phục'],
-      ['khăn quàng', 'khăn'],
-      ['xả rác', 'rác', 'vệ sinh cá nhân'],
-      ['nói chuyện', 'trật tự', 'mất trật tự'],
-      ['người tốt', 'việc tốt', 'khen thưởng', 'tuyên dương'],
-      ['nội quy', 'vi phạm'],
-    ];
-
-    const unitKeywords = [
-      ['vệ sinh chưa sạch', 'vệ sinh', 'sạch'],
-      ['trực nhật'],
-      ['trực lớp', 'trực'],
-      ['mất trật tự tập thể', 'trật tự'],
-      ['nền nếp', 'vi phạm nền nếp'],
-      ['nhiệm vụ', 'không hoàn thành'],
-      ['thực hiện tốt', 'tập thể tốt'],
-    ];
-
-    const targetKeywords = targetMode === 'STUDENT' ? studentKeywords : unitKeywords;
-    const featured: CompetitionRule[] = [];
-    const usedIds = new Set<string>();
-
-    for (const group of targetKeywords) {
-      const match = scopeFiltered.find(r => {
-        if (usedIds.has(r.id)) return false;
-        const combinedText = `${r.name} ${r.code} ${r.description || ''}`.toLowerCase();
-        return group.some(kw => combinedText.includes(kw));
-      });
-
-      if (match) {
-        featured.push(match);
-        usedIds.add(match.id);
-      }
-    }
-
-    // Backfill up to 6 featured rules if keyword matches are fewer
-    if (featured.length < 6) {
-      for (const r of scopeFiltered) {
-        if (!usedIds.has(r.id) && featured.length < 6) {
-          featured.push(r);
-          usedIds.add(r.id);
-        }
-      }
-    }
+    // Only shortcuts explicitly configured by administrators are displayed.
+    const key = targetMode === 'STUDENT' ? 'featured_student_order' : 'featured_unit_order';
+    const featured = scopeFiltered
+      .filter(r => typeof r[key] === 'number' && (r[key] as number) > 0)
+      .sort((a, b) => ((a[key] as number) - (b[key] as number)) || a.name.localeCompare(b.name, 'vi'))
+      .slice(0, 6);
 
     return { featuredRules: featured, scopeFilteredRules: scopeFiltered };
   }, [allRules, targetMode]);
-
-  // Automatically select first rule if none selected when rules load
-  useEffect(() => {
-    if (featuredRules.length > 0 && !selectedRuleId) {
-      handleSelectRule(featuredRules[0]);
-    } else if (scopeFilteredRules.length > 0 && !selectedRuleId) {
-      handleSelectRule(scopeFilteredRules[0]);
-    }
-  }, [featuredRules, scopeFilteredRules]);
 
   const handleSelectRule = (rule: CompetitionRule) => {
     setSelectedRuleId(rule.id);
@@ -1205,6 +1156,9 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-normal font-sans">
                 Hành vi thường dùng:
               </p>
+              {featuredRules.length === 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Chưa cài đặt hành vi thường dùng. Chọn “Xem tất cả hành vi” hoặc nhờ quản trị viên cấu hình trong Quy tắc thi đua.</p>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 {featuredRules.map(rule => {
                   const isSelected = selectedRuleId === rule.id;

@@ -172,6 +172,8 @@ export interface CompetitionRule {
   daily_limit?: number | null;
   is_active: boolean;
   display_order: number;
+  featured_student_order?: number | null;
+  featured_unit_order?: number | null;
   created_at: string;
   updated_at: string;
   program?: CompetitionProgram;

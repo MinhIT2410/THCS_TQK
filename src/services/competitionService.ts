@@ -175,6 +175,13 @@ export const competitionService = {
     })) as CompetitionRule[];
   },
 
+  // Only update shortcut placement; do not touch points, permissions or rule content.
+  async setFeaturedRuleOrder(ruleId: string, mode: 'STUDENT' | 'UNIT', order: number | null): Promise<void> {
+    const column = mode === 'STUDENT' ? 'featured_student_order' : 'featured_unit_order';
+    const { error } = await supabase.from('competition_rules').update({ [column]: order }).eq('id', ruleId);
+    if (error) throw error;
+  },
+
   async createCompetitionRule(rule: Partial<CompetitionRule>): Promise<CompetitionRule> {
     const approverTypes = rule.allowed_approver_types || [];
     const requiresApproval = approverTypes.length > 0;

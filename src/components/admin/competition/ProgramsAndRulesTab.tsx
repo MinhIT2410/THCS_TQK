@@ -70,6 +70,9 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; is_current?: boolean; is_active?: boolean }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedProgramFilter, setSelectedProgramFilter] = useState<string>('ALL');
+  const [featuredMode, setFeaturedMode] = useState<'STUDENT' | 'UNIT'>('STUDENT');
+  const [savingFeatured, setSavingFeatured] = useState<string | null>(null);
+
 
   // Program Modal State
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -475,6 +478,36 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
     });
   }, [rules, canManage, selectedProgramFilter]);
 
+  const featuredColumn = featuredMode === 'STUDENT' ? 'featured_student_order' : 'featured_unit_order';
+  const eligibleFeaturedRules = programRules.filter(r => r.is_active && (
+    featuredMode === 'STUDENT'
+      ? (r.effect_scope === 'STUDENT_ONLY' || r.effect_scope === 'BOTH')
+      : (r.effect_scope === 'UNIT_ONLY' || r.effect_scope === 'BOTH')
+  ));
+  const selectedFeaturedRules = eligibleFeaturedRules
+    .filter(r => typeof r[featuredColumn] === 'number' && (r[featuredColumn] as number) > 0)
+    .sort((a, b) => (a[featuredColumn] as number) - (b[featuredColumn] as number));
+
+  const toggleFeaturedRule = async (rule: CompetitionRule) => {
+    if (!canManage || savingFeatured) return;
+    const selected = selectedFeaturedRules.some(r => r.id === rule.id);
+    if (!selected && selectedFeaturedRules.length >= 6) {
+      setToast({ type: 'error', text: 'Mỗi nhóm chỉ được chọn tối đa 6 hành vi thường dùng.' });
+      return;
+    }
+    const order = selected ? null : Math.max(0, ...selectedFeaturedRules.map(r => r[featuredColumn] as number)) + 1;
+    setSavingFeatured(rule.id);
+    try {
+      await competitionService.setFeaturedRuleOrder(rule.id, featuredMode, order);
+      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, [featuredColumn]: order } : r));
+      setToast({ type: 'success', text: 'Đã lưu cấu hình hành vi thường dùng.' });
+    } catch (err: any) {
+      setToast({ type: 'error', text: err.message || 'Không thể lưu. Hãy kiểm tra đã chạy SQL cập nhật chưa.' });
+    } finally {
+      setSavingFeatured(null);
+    }
+  };
+
   const filteredRules = useMemo(() => {
     return programRules.filter(r => {
       if (categoryFilter !== 'ALL' && r.category !== categoryFilter) return false;
@@ -742,6 +775,40 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
               </button>
             )}
           </div>
+
+          {selectedProgramFilter && selectedProgramFilter !== 'ALL' && !loading && (
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cài đặt hành vi thường dùng</h4>
+                <p className="text-xs text-slate-500 mt-1">Chọn tối đa 6 quy tắc cho mỗi nhóm. Thứ tự chọn quyết định thứ tự hiển thị ở trang Ghi nhận. Không thay đổi điểm hay nội dung quy tắc.</p>
+              </div>
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Nhóm hành vi thường dùng">
+                {([['STUDENT', 'Hành vi thường dùng Cá nhân'], ['UNIT', 'Hành vi thường dùng Tập thể']] as const).map(([mode, label]) => (
+                  <button key={mode} type="button" role="tab" aria-selected={featuredMode === mode}
+                    onClick={() => setFeaturedMode(mode)}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold border ${featuredMode === mode ? 'bg-red-600 border-red-600 text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Đã chọn {selectedFeaturedRules.length}/6 — {selectedFeaturedRules.map(r => r.name).join(' → ') || 'Chưa chọn hành vi nào'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                {eligibleFeaturedRules.map(rule => {
+                  const selected = selectedFeaturedRules.some(r => r.id === rule.id);
+                  return (
+                    <button key={rule.id} type="button" disabled={!canManage || !!savingFeatured}
+                      onClick={() => toggleFeaturedRule(rule)}
+                      aria-pressed={selected}
+                      className={`text-left rounded-xl border p-3 text-xs disabled:opacity-60 ${selected ? 'border-red-500 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200' : 'border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'}`}>
+                      <span className="font-semibold">{selected ? '✓ ' : '+ '}{rule.name}</span>
+                      <span className="block mt-1 opacity-75">{featuredMode === 'STUDENT' ? rule.student_merit_points : rule.unit_points} điểm {selected ? `· Vị trí ${selectedFeaturedRules.findIndex(r => r.id === rule.id) + 1}` : ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {eligibleFeaturedRules.length === 0 && <p className="text-xs text-slate-500">Không có quy tắc đang hoạt động phù hợp nhóm này.</p>}
+            </section>
+          )}
 
           {loading ? (
             <div className="p-12 text-center text-xs text-slate-400 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 animate-pulse">
