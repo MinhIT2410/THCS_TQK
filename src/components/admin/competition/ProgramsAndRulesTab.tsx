@@ -491,8 +491,8 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
   const toggleFeaturedRule = async (rule: CompetitionRule) => {
     if (!canManage || savingFeatured) return;
     const selected = selectedFeaturedRules.some(r => r.id === rule.id);
-    if (!selected && selectedFeaturedRules.length >= 6) {
-      setToast({ type: 'error', text: 'Mỗi nhóm chỉ được chọn tối đa 6 hành vi thường dùng.' });
+    if (!selected && selectedFeaturedRules.length >= 8) {
+      setToast({ type: 'error', text: 'Mỗi nhóm chỉ được chọn tối đa 8 hành vi thường dùng.' });
       return;
     }
     const order = selected ? null : Math.max(0, ...selectedFeaturedRules.map(r => r[featuredColumn] as number)) + 1;
@@ -780,7 +780,7 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
             <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-4">
               <div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cài đặt hành vi thường dùng</h4>
-                <p className="text-xs text-slate-500 mt-1">Chọn tối đa 6 quy tắc cho mỗi nhóm. Thứ tự chọn quyết định thứ tự hiển thị ở trang Ghi nhận. Không thay đổi điểm hay nội dung quy tắc.</p>
+                <p className="text-xs text-slate-500 mt-1">Chọn tối đa 8 quy tắc cho mỗi nhóm. Thứ tự chọn quyết định thứ tự hiển thị ở trang Ghi nhận. Không thay đổi điểm hay nội dung quy tắc.</p>
               </div>
               <div className="flex flex-wrap gap-2" role="tablist" aria-label="Nhóm hành vi thường dùng">
                 {([['STUDENT', 'Hành vi thường dùng Cá nhân'], ['UNIT', 'Hành vi thường dùng Tập thể']] as const).map(([mode, label]) => (
@@ -791,7 +791,7 @@ export default function ProgramsAndRulesTab({ initialSubTab = 'programs', onProg
                   </button>
                 ))}
               </div>
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Đã chọn {selectedFeaturedRules.length}/6 — {selectedFeaturedRules.map(r => r.name).join(' → ') || 'Chưa chọn hành vi nào'}</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Đã chọn {selectedFeaturedRules.length}/8 — {selectedFeaturedRules.map(r => r.name).join(' → ') || 'Chưa chọn hành vi nào'}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
                 {eligibleFeaturedRules.map(rule => {
                   const selected = selectedFeaturedRules.some(r => r.id === rule.id);

@@ -464,7 +464,7 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
     const featured = scopeFiltered
       .filter(r => typeof r[key] === 'number' && (r[key] as number) > 0)
       .sort((a, b) => ((a[key] as number) - (b[key] as number)) || a.name.localeCompare(b.name, 'vi'))
-      .slice(0, 6);
+      .slice(0, 8);
 
     return { featuredRules: featured, scopeFilteredRules: scopeFiltered };
   }, [allRules, targetMode]);
