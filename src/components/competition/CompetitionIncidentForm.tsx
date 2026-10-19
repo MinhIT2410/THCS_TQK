@@ -132,11 +132,32 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
 
   // Additional Information Collapsible
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
-  const [occurredAt, setOccurredAt] = useState<string>(() => {
+  // Default to the actual submission time. Only preserve an older time when the
+  // recorder has explicitly edited the occurrence-time field.
+  const currentLocalDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
-  });
+  };
+  const occurredAtManuallyEdited = useRef(false);
+  const [occurredAt, setOccurredAt] = useState<string>(currentLocalDateTime);
+
+  useEffect(() => {
+    const refreshDefaultTime = () => {
+      if (!occurredAtManuallyEdited.current) {
+        setOccurredAt(currentLocalDateTime());
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshDefaultTime();
+    };
+    window.addEventListener('focus', refreshDefaultTime);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', refreshDefaultTime);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [evidenceNote, setEvidenceNote] = useState('');
@@ -571,6 +592,31 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
 
     if (!canSubmit || !activeProgram || !selectedRule) return;
 
+    // Do not trust a datetime-local value initialized days earlier in an open tab.
+    const submissionOccurredAt = occurredAtManuallyEdited.current
+      ? occurredAt
+      : currentLocalDateTime();
+    const parsedOccurredAt = new Date(submissionOccurredAt);
+    if (!submissionOccurredAt || Number.isNaN(parsedOccurredAt.getTime())) {
+      setShowAdditionalInfo(true);
+      setToastMessage({ type: 'error', text: 'Thời gian xảy ra không hợp lệ. Vui lòng kiểm tra lại.' });
+      return;
+    }
+    if (parsedOccurredAt.getTime() > Date.now() + 60_000) {
+      setShowAdditionalInfo(true);
+      setToastMessage({ type: 'error', text: 'Không thể ghi nhận thời gian xảy ra trong tương lai.' });
+      return;
+    }
+    if (occurredAtManuallyEdited.current &&
+        parsedOccurredAt.toDateString() !== new Date().toDateString()) {
+      setShowAdditionalInfo(true);
+      if (!window.confirm(
+        `Bạn đang ghi nhận sự việc ngày ${parsedOccurredAt.toLocaleDateString('vi-VN')} ` +
+        `(khác ngày hôm nay). Xác nhận gửi với ngày đã chọn?`
+      )) return;
+    }
+    if (!occurredAtManuallyEdited.current) setOccurredAt(submissionOccurredAt);
+
     if (isEvidenceRequired && !hasEvidenceProvided) {
       setShowAdditionalInfo(true);
       setToastMessage({
@@ -609,7 +655,7 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
       const basePayload = {
         program_id: activeProgram.id,
         rule_id: selectedRule.id,
-        occurred_at: new Date(occurredAt).toISOString(),
+        occurred_at: parsedOccurredAt.toISOString(),
         title: title.trim() || selectedRule.name,
         description: description.trim() || null,
         evidence_note: evidenceNote.trim() || null,
@@ -662,6 +708,8 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
                   : `Đã gửi ghi nhận cho ${successCount} Chi đội và chuyển sang Chờ duyệt.`),
           });
           setLastSubmittedSuccess(true);
+          occurredAtManuallyEdited.current = false;
+          setOccurredAt(currentLocalDateTime());
           setSelectedClasses([]);
           setDescription('');
           setEvidenceNote('');
@@ -722,6 +770,8 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
               : `Đã gửi ${successCount} ghi nhận và chuyển sang Chờ duyệt.`,
           });
           setLastSubmittedSuccess(true);
+          occurredAtManuallyEdited.current = false;
+          setOccurredAt(currentLocalDateTime());
           setSelectedStudents([]);
           setDescription('');
           setEvidenceNote('');
@@ -1284,6 +1334,11 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
             {showAdditionalInfo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <span>Ngày giờ vi phạm đang chọn: <strong className="text-slate-900 dark:text-white">{occurredAt.replace('T', ' ')}</strong></span>
+            <span className="text-[11px] text-slate-500">(Mặc định tự cập nhật lúc gửi)</span>
+          </div>
+
           {showAdditionalInfo && (
             <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1294,7 +1349,10 @@ export default function CompetitionIncidentForm({ onNavigateToPrograms }: Compet
                   <input
                     type="datetime-local"
                     value={occurredAt}
-                    onChange={e => setOccurredAt(e.target.value)}
+                    onChange={e => {
+                      occurredAtManuallyEdited.current = true;
+                      setOccurredAt(e.target.value);
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
