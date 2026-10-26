@@ -7,8 +7,8 @@ import { ROUTES } from '../config/routes';
 const tools = [
   {
     id: 'international-it',
-    name: 'Học Tin học quốc tế',
-    description: 'Không gian học tập và ôn luyện IC3, MOS dành cho học sinh.',
+    name: 'Học Tin học quốc tế – IC3',
+    description: 'Luyện tập IC3 dành cho học sinh THCS qua IC3 Review.',
     path: ROUTES.INTERNATIONAL_IT,
     Icon: MonitorPlay,
   },
