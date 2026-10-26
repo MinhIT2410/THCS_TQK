@@ -2,115 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
 import { ROUTES } from '../config/routes';
-
-type Grade = '6' | '7' | '8';
-type PracticeOption = {
-  id: string;
-  name: string;
-  url: string | null;
-  status: 'ready' | 'coming_soon';
-};
-
-type TopicConfig = {
-  code: string;
-  title: string;
-  tests: number[];
-};
-
-type LevelConfig = {
-  levelCode: string;
-  levelLabel: string;
-  gradeLabel: string;
-  topics: TopicConfig[];
-  includeExtensionTopic?: boolean;
-};
-
-const LEVELS: Record<Grade, LevelConfig> = {
-  '6': {
-    levelCode: 'IC3GS6L1',
-    levelLabel: 'IC3 GS6 Level 1',
-    gradeLabel: 'Khối 6',
-    topics: [
-      { code: 'CD1', title: 'Căn Bản Về Công Nghệ', tests: [1, 2] },
-      { code: 'CD2', title: 'Quản Lí Thông Tin', tests: [1] },
-      { code: 'CD3', title: 'Công Dân Số', tests: [1, 2] },
-      { code: 'CD4', title: 'Truyền Thông', tests: [1] },
-      { code: 'CD5', title: 'An Toàn Và Bảo Mật', tests: [1] },
-      { code: 'CD6', title: 'Sáng Tạo Nội Dung', tests: [1] },
-      { code: 'CD7', title: 'Công tác', tests: [1] },
-    ],
-    includeExtensionTopic: true,
-  },
-  '7': {
-    levelCode: 'IC3GS6L2',
-    levelLabel: 'IC3 GS6 Level 2',
-    gradeLabel: 'Khối 7',
-    topics: [
-      { code: 'CD1', title: 'Căn Bản Về Công Nghệ', tests: [1, 2, 3] },
-      { code: 'CD2', title: 'Giao tiếp kĩ thuật số', tests: [1, 2] },
-      { code: 'CD3', title: 'Công Dân Số', tests: [1] },
-      { code: 'CD4', title: 'Quản Lí Thông Tin', tests: [1] },
-      { code: 'CD5', title: 'Sáng Tạo Nội Dung', tests: [1, 2] },
-      { code: 'CD6', title: 'Công tác', tests: [1] },
-      { code: 'CD7', title: 'An Toàn Và Bảo Mật', tests: [1, 2] },
-    ],
-    includeExtensionTopic: true,
-  },
-  '8': {
-    levelCode: 'IC3GS6L3',
-    levelLabel: 'IC3 GS6 Level 3',
-    gradeLabel: 'Khối 8',
-    topics: [
-      { code: 'CD1', title: 'Căn Bản Về Công Nghệ', tests: [1, 2, 3] },
-      { code: 'CD2', title: 'Công dân số', tests: [1, 2] },
-      { code: 'CD3', title: 'Quản lí thông tin', tests: [1, 2] },
-      { code: 'CD4', title: 'Sáng tạo nội dung', tests: [1, 2, 3] },
-      { code: 'CD5', title: 'Giao tiếp kĩ thuật số', tests: [1, 2] },
-      { code: 'CD6', title: 'Công tác', tests: [1] },
-      { code: 'CD7', title: 'An Toàn Và Bảo Mật', tests: [1] },
-    ],
-    includeExtensionTopic: true,
-  },
-};
-
-function buildIigUrl(levelCode: string, topicCode: string, testNumber: number) {
-  const folder = `${levelCode}-${topicCode}-T${testNumber} (Published)`;
-  return `https://ic3review.iigvietnam.edu.vn/newdata/${levelCode}/${encodeURIComponent(folder)}/index.html`;
-}
-
-function buildOptions(config: LevelConfig): PracticeOption[] {
-  const options: PracticeOption[] = [];
-
-  config.topics.forEach((topic, topicIndex) => {
-    topic.tests.forEach((testNumber) => {
-      options.push({
-        id: `${config.levelCode}-${topic.code}-T${testNumber}`,
-        name: `Chủ Đề ${topicIndex + 1}: ${topic.title} - Test ${testNumber}`,
-        url: buildIigUrl(config.levelCode, topic.code, testNumber),
-        status: 'ready',
-      });
-    });
-  });
-
-  if (config.includeExtensionTopic) {
-    options.push({
-      id: `${config.levelCode}-EXT`,
-      name: 'Chủ đề mở rộng',
-      url: null,
-      status: 'coming_soon',
-    });
-  }
-
-  return options;
-}
-
-const TESTS: Record<Grade, PracticeOption[]> = {
-  '6': buildOptions(LEVELS['6']),
-  '7': buildOptions(LEVELS['7']),
-  '8': buildOptions(LEVELS['8']),
-};
+import { TESTS, LEVELS, type Grade } from '../config/ic3Catalog';
+import { useAuth } from '../features/auth/AuthContext';
+import { supabase } from '../services/supabaseClient';
 
 export default function InternationalITPage() {
+  const { isAuthenticated } = useAuth();
+  const [secret, setSecret] = useState<string | null>(null);
+  const [codeState, setCodeState] = useState<'idle'|'loading'|'error'>('idle');
   const [grade, setGrade] = useState<Grade>('6');
   const [optionId, setOptionId] = useState<string>('');
 
@@ -120,8 +19,20 @@ export default function InternationalITPage() {
 
   function handleGradeChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const nextGrade = event.target.value as Grade;
+    setSecret(null);
+    setCodeState('idle');
     setGrade(nextGrade);
     setOptionId('');
+  }
+
+  async function showCode() {
+    if (!isAuthenticated || !selectedOption) return;
+    setCodeState('loading');
+    setSecret(null);
+    const { data, error } = await supabase.rpc('ic3_get_access_code', { p_test_id: selectedOption.id });
+    if (error) { setCodeState('error'); return; }
+    setSecret(typeof data === 'string' ? data : '');
+    setCodeState('idle');
   }
 
   return (
@@ -179,7 +90,7 @@ export default function InternationalITPage() {
                 Bài test
                 <select
                   value={optionId}
-                  onChange={(event) => setOptionId(event.target.value)}
+                  onChange={(event) => { setOptionId(event.target.value); setSecret(null); setCodeState('idle'); }}
                   className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 font-normal text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
                   <option value="">— Chọn bài —</option>
@@ -231,6 +142,23 @@ export default function InternationalITPage() {
               )}
             </div>
 
+            {selectedOption?.url && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
+                <p className="font-semibold text-slate-900 dark:text-white">Mã mở bài do nhà trường quản lý</p>
+                {!isAuthenticated ? (
+                  <p className="text-sm text-amber-700">Hãy đăng nhập website Liên đội để xem mã được cấp cho bài này. Bạn vẫn có thể mở bài IIG và nhập mã được giáo viên cung cấp.</p>
+                ) : (
+                  <>
+                    <button type="button" onClick={showCode} disabled={codeState === 'loading'} className="px-3 py-2 border rounded-lg text-sm font-semibold text-blue-700 dark:text-blue-300">
+                      {codeState === 'loading' ? 'Đang tải mã…' : 'Xem mã mở bài'}
+                    </button>
+                    {codeState === 'error' && <p className="text-sm text-red-600">Không tải được mã. Kiểm tra bảng/RPC IC3 đã cài và quyền tài khoản.</p>}
+                    {secret === '' && <p className="text-sm text-amber-700">Bài này chưa được quản trị nhập mã.</p>}
+                    {secret && <div className="flex flex-wrap items-center gap-3"><code className="rounded bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white">{secret}</code><button type="button" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm" onClick={() => navigator.clipboard.writeText(secret)}>Sao chép mã</button></div>}
+                  </>
+                )}
+              </div>
+            )}
             <div className="rounded-2xl border border-blue-100 dark:border-slate-800 bg-blue-50/70 dark:bg-slate-800/60 p-4 text-sm text-slate-600 dark:text-slate-300">
               <div className="flex items-start gap-2">
                 <ShieldCheck size={18} className="shrink-0 mt-0.5 text-emerald-600" />

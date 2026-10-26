@@ -14,7 +14,8 @@ import {
   LucideIcon,
   Info,
   Flag,
-  Award
+  Award,
+  BookOpenCheck
 } from 'lucide-react';
 
 export interface AdminMenuItem {
@@ -33,6 +34,11 @@ export const ADMIN_MENU_ITEMS: AdminMenuItem[] = [
     label: 'Thi đua',
     href: '/quan-tri/thi-dua',
     icon: Award,
+  },
+  {
+    label: 'Quản lý IC3',
+    href: '/quan-tri/ic3',
+    icon: BookOpenCheck,
   },
   {
     label: 'Tin tức',
