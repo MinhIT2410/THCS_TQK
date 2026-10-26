@@ -142,7 +142,7 @@ export default function InternationalITPage() {
               )}
             </div>
 
-            {selectedOption?.url && (
+            {selectedOption && (
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
                 <p className="font-semibold text-slate-900 dark:text-white">Mã mở bài do nhà trường quản lý</p>
                 {!isAuthenticated ? (
@@ -153,7 +153,7 @@ export default function InternationalITPage() {
                       {codeState === 'loading' ? 'Đang tải mã…' : 'Xem mã mở bài'}
                     </button>
                     {codeState === 'error' && <p className="text-sm text-red-600">Không tải được mã. Kiểm tra bảng/RPC IC3 đã cài và quyền tài khoản.</p>}
-                    {secret === '' && <p className="text-sm text-amber-700">Bài này chưa được quản trị nhập mã.</p>}
+                    {secret === '' && <p className="text-sm text-amber-700">Mục này chưa được quản trị nhập mã.</p>}
                     {secret && <div className="flex flex-wrap items-center gap-3"><code className="rounded bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white">{secret}</code><button type="button" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm" onClick={() => navigator.clipboard.writeText(secret)}>Sao chép mã</button></div>}
                   </>
                 )}

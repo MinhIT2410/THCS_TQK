@@ -1,0 +1,50 @@
+-- Chạy riêng trong Supabase SQL Editor sau migrations 095 và 096.
+-- KHÔNG ĐƯA FILE NÀY LÊN GITHUB: có mã mở bài thực tế.
+-- 38 mã: Level 1 = 10, Level 2 = 13, Level 3 = 15.
+-- Có thể chạy lại mà không nhân đôi. Không xóa các mã khác.
+INSERT INTO public.ic3_test_access_codes (test_id, access_code, updated_at)
+VALUES
+('IC3GS6L1-EXT', '37967153'),
+('IC3GS6L1-CD1-T1', '604466'),
+('IC3GS6L1-CD1-T2', '605437'),
+('IC3GS6L1-CD2-T1', '609421'),
+('IC3GS6L1-CD3-T1', '601967'),
+('IC3GS6L1-CD3-T2', '607997'),
+('IC3GS6L1-CD4-T1', '601456'),
+('IC3GS6L1-CD5-T1', '602906'),
+('IC3GS6L1-CD6-T1', '606343'),
+('IC3GS6L1-CD7-T1', '604046'),
+('IC3GS6L2-EXT', '92770291'),
+('IC3GS6L2-CD1-T1', '7098021'),
+('IC3GS6L2-CD1-T2', '7040355'),
+('IC3GS6L2-CD1-T3', '7075991'),
+('IC3GS6L2-CD2-T1', '7063197'),
+('IC3GS6L2-CD2-T2', '7054006'),
+('IC3GS6L2-CD3-T1', '7014575'),
+('IC3GS6L2-CD4-T1', '7084633'),
+('IC3GS6L2-CD5-T1', '7093472'),
+('IC3GS6L2-CD5-T2', '7031047'),
+('IC3GS6L2-CD6-T1', '7096031'),
+('IC3GS6L2-CD7-T1', '7088025'),
+('IC3GS6L2-CD7-T2', '7055783'),
+('IC3GS6L3-EXT', '60661267'),
+('IC3GS6L3-CD1-T1', '845389'),
+('IC3GS6L3-CD1-T2', '872679'),
+('IC3GS6L3-CD1-T3', '832649'),
+('IC3GS6L3-CD2-T1', '861409'),
+('IC3GS6L3-CD2-T2', '821626'),
+('IC3GS6L3-CD3-T1', '860508'),
+('IC3GS6L3-CD3-T2', '839194'),
+('IC3GS6L3-CD4-T1', '852258'),
+('IC3GS6L3-CD4-T2', '832645'),
+('IC3GS6L3-CD4-T3', '819767'),
+('IC3GS6L3-CD5-T1', '829460'),
+('IC3GS6L3-CD5-T2', '856055'),
+('IC3GS6L3-CD6-T1', '878861'),
+('IC3GS6L3-CD7-T1', '844559')
+ON CONFLICT (test_id) DO UPDATE
+SET access_code = EXCLUDED.access_code, updated_at = NOW();
+
+SELECT split_part(test_id,'-',1) AS level, COUNT(*) AS so_ma
+FROM public.ic3_test_access_codes WHERE test_id LIKE 'IC3GS6L%'
+GROUP BY 1 ORDER BY 1;

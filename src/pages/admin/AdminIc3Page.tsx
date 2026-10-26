@@ -13,7 +13,7 @@ export default function AdminIc3Page() {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const tests = useMemo(() => TESTS[grade].filter(x => x.url), [grade]);
+  const tests = useMemo(() => TESTS[grade], [grade]);
   const codes = useMemo(() => new Map(rows.map(x => [x.test_id, x])), [rows]);
   const selected = tests.find(x => x.id === testId);
 
@@ -35,7 +35,7 @@ export default function AdminIc3Page() {
   }
   if (!canManage) return <p className="p-6">Bạn không có quyền quản lý mã IC3.</p>;
   return <div className="space-y-5 max-w-5xl mx-auto">
-    <header><h1 className="text-2xl font-bold">Quản lý IC3</h1><p className="text-sm text-slate-500 mt-1">Đặt mã mở bài riêng cho từng Test. Mã lưu ở Supabase, không đưa vào source website.</p></header>
+    <header><h1 className="text-2xl font-bold">Quản lý IC3</h1><p className="text-sm text-slate-500 mt-1">Đặt mã mở bài riêng cho từng Test và Chủ đề mở rộng. Mã lưu ở Supabase, không đưa vào source website.</p></header>
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-2xl bg-white dark:bg-slate-900 border p-5">
       <label className="text-sm font-semibold">Chọn khối<select value={grade} onChange={e => { const next = e.target.value as Grade; setGrade(next); setTestId(TESTS[next][0].id); }} className="block w-full mt-2 p-3 border rounded-lg bg-white dark:bg-slate-900"><option value="6">Khối 6 · Level 1</option><option value="7">Khối 7 · Level 2</option><option value="8">Khối 8 · Level 3</option></select></label>
       <label className="text-sm font-semibold sm:col-span-2">Chọn bài<select value={testId} onChange={e => setTestId(e.target.value)} className="block w-full mt-2 p-3 border rounded-lg bg-white dark:bg-slate-900">{tests.map(t => <option key={t.id} value={t.id}>{t.name} {codes.has(t.id) ? '✓' : ''}</option>)}</select></label>

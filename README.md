@@ -1,30 +1,27 @@
-# Patch quản trị Mở rộng – IC3
+# Patch đồng bộ 38 mã IC3 GS6 – Khối 6, 7, 8
 
-## Đúng cấu trúc yêu cầu
-- Menu bên trái: **Tin tức → Mở rộng** (`/quan-tri/mo-rong`).
-- Trang **Mở rộng** là lưới thẻ quản lý; thẻ đầu tiên là **Quản lý Tin học quốc tế**.
-- Chọn thẻ sẽ mở `/quan-tri/ic3` để nhập mã mở bài riêng cho 35 bài Test (khối 6: 9, khối 7: 12, khối 8: 14).
-- Trên bảng Tổng quan, thẻ **Quản lý Tin tức** được thay bằng **Mở rộng**.
-- Route quản trị `/quan-tri/tin-tuc` chỉ chuyển về `/quan-tri/mo-rong`; không còn trang quản lý Tin tức trong menu hoặc bảng Tổng quan.
-- **Không xóa dữ liệu tin tức trên Supabase**, vì xóa dữ liệu là thao tác riêng không được yêu cầu.
+## Nội dung
+- Khối 6 / Level 1: **9 bài + 1 Chủ đề mở rộng = 10 mã**.
+- Khối 7 / Level 2: **12 bài + 1 Chủ đề mở rộng = 13 mã**.
+- Khối 8 / Level 3: **14 bài + 1 Chủ đề mở rộng = 15 mã**.
+- Tổng **38 mã** do quản trị cung cấp (không tự tạo mã).
+- Chỉnh danh sách **Chủ đề 2–5 của Level 3** theo đúng tên và thứ tự trong bộ mã mới, tránh lấy nhầm mật khẩu.
+- Quản trị IC3 quản lý cả Chủ đề mở rộng; học sinh đã đăng nhập có thể lấy và sao chép mã Chủ đề mở rộng.
+- Chủ đề mở rộng chưa có link IIG trực tiếp, nên nút Mở bài của mục này vẫn không hoạt động.
 
-## Các file code thay đổi
-- `src/App.tsx`
-- `src/config/adminMenu.ts`
-- `src/config/ic3Catalog.ts`
-- `src/pages/InternationalITPage.tsx`
-- `src/pages/admin/AdminIc3Page.tsx`
-- `src/pages/admin/AdminExtensionsPage.tsx` (mới)
-- `src/pages/admin/AdminDashboardPage.tsx`
-
-## Database
-- `supabase/migrations/095_ic3_test_access_codes.sql`: SQL tạo bảng mã bài và chính sách quyền. Nếu đã chạy SQL của patch trước đó, **không cần chạy lại nếu đã có bảng và chính sách đúng**.
-
-## Cài đặt
-1. Giải nén và đối chiếu từng file trước khi copy đè vào project mới nhất.
-2. Chạy migration SQL trong Supabase nếu chưa chạy.
-3. Build project và thử bằng tài khoản quản trị.
-4. Kiểm tra menu **Mở rộng**, thẻ **Quản lý Tin học quốc tế**, lưu mã từng bài, và quyền truy cập của học sinh.
+## Cách cài chính xác
+1. **Điều kiện tiên quyết:** Đã áp dụng `TQK_PATCH_QUAN_TRI_MO_RONG_IC3_DUNG_CAU_TRUC.zip` và migration `095_ic3_test_access_codes.sql`. Nếu chưa, áp dụng patch quản trị này trước.
+2. Copy đè đúng 3 file code trong ZIP này vào source mới nhất:
+   - `src/config/ic3Catalog.ts`
+   - `src/pages/admin/AdminIc3Page.tsx`
+   - `src/pages/InternationalITPage.tsx`
+3. Chạy `supabase/migrations/096_ic3_allow_extension.sql` trong Supabase SQL Editor để cho phép mã Chủ đề mở rộng.
+4. **Chạy RIÊNG** `PRIVATE_RUN_MANUALLY_IC3_38_CODES.sql` trong Supabase SQL Editor để nhập 38 mã.
+5. **KHÔNG đưa file PRIVATE...SQL vào GitHub, không commit và không triển khai qua Vercel.** Để ngoài thư mục dự án. Lưu trữ và chia sẻ hạn chế.
+6. Kiểm tra admin ở Quản trị → Mở rộng → Quản lý Tin học quốc tế (10/13/15 mục); học sinh đăng nhập thử chọn bài, nhấn xem và sao chép mã. Tài khoản khách không được đọc mã.
 
 ## Lưu ý
-Patch được xây dựng trên source ZIP đã cung cấp và patch IC3 ngay trước đó, không thay thế service/logic thi đua. Chưa có kết quả kiểm thử build hoặc chạy SQL trên dự án triển khai. Không sao chép nội dung đề IIG.
+- Không tự điền mật khẩu vào giao diện IIG; học sinh sao chép và dán vào bài.
+- Các URL bài IIG đang theo cấu trúc đoán từ tên; chưa kiểm tra trực tiếp toàn bộ 35 URL.
+- Không sửa logic thi đua, quyền khác, danh mục Tin tức hoặc dữ liệu khác.
+- Chưa thực hiện build đầy đủ hoặc chạy SQL trên Supabase thật.
