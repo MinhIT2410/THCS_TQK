@@ -128,7 +128,7 @@ const ResetPasswordPage = lazyWithReload(() => import('./pages/ResetPasswordPage
 const AdminLayout = lazyWithReload(() => import('./layouts/admin/AdminLayout'));
 const AdminDashboardPage = lazyWithReload(() => import('./pages/admin/AdminDashboardPage'));
 const AdminIc3Page = lazyWithReload(() => import('./pages/admin/AdminIc3Page'));
-const AdminNewsPage = lazyWithReload(() => import('./pages/admin/AdminNewsPage'));
+const AdminExtensionsPage = lazyWithReload(() => import('./pages/admin/AdminExtensionsPage'));
 const AdminDocumentsPage = lazyWithReload(() => import('./pages/admin/AdminDocumentsPage'));
 const AdminAlbumsPage = lazyWithReload(() => import('./pages/admin/AdminAlbumsPage'));
 const AdminCmsPage = lazyWithReload(() => import('./pages/admin/AdminCmsPage'));
@@ -503,7 +503,8 @@ function AppContent() {
           <Route path="thi-dua/cua-hang" element={<AdminCompetitionPage />} />
           <Route path="thi-dua/doi-qua" element={<AdminCompetitionPage />} />
           <Route path="thi-dua/xem-lai" element={<AdminCompetitionPage />} />
-          <Route path="tin-tuc" element={<AdminNewsPage />} />
+          <Route path="tin-tuc" element={<Navigate to="/quan-tri/mo-rong" replace />} />
+          <Route path="mo-rong" element={<AdminExtensionsPage />} />
           <Route path="ic3" element={<AdminIc3Page />} />
           <Route path="hoat-dong-phong-trao" element={<AdminMovementsPage />} />
           <Route path="tai-lieu" element={<AdminDocumentsPage />} />

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import {
   Medal,
-  Newspaper,
+  LayoutGrid,
   FileText,
   Image as ImageIcon,
   Paintbrush,
@@ -31,10 +31,10 @@ export default function AdminDashboardPage() {
       color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/40',
     },
     {
-      title: 'Quản lý Tin tức',
-      description: 'Đăng tin giáo dục, thông báo học đường, sự kiện hoạt động của nhà trường.',
-      href: '/quan-tri/tin-tuc',
-      icon: Newspaper,
+      title: 'Mở rộng',
+      description: 'Quản lý các tiện ích bổ sung, trước mắt là Tin học quốc tế IC3.',
+      href: '/quan-tri/mo-rong',
+      icon: LayoutGrid,
       color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/40',
     },
     {
@@ -85,7 +85,7 @@ export default function AdminDashboardPage() {
             Bảng điều khiển quản trị
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Xin chào, <strong className="text-slate-700 dark:text-slate-200">{profile?.full_name || 'Quản trị viên'}</strong>. Khu vực này cho phép bạn quản lý thông tin, bài viết, và tư liệu giảng dạy của nhà trường.
+            Xin chào, <strong className="text-slate-700 dark:text-slate-200">{profile?.full_name || 'Quản trị viên'}</strong>. Khu vực này cho phép bạn quản lý các hoạt động, tiện ích và tư liệu giảng dạy của nhà trường.
           </p>
         </div>
         <div className="absolute right-0 bottom-0 top-0 opacity-10 pointer-events-none hidden md:block">

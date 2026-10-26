@@ -5,7 +5,7 @@
 
 import {
   LayoutDashboard,
-  Newspaper,
+  LayoutGrid,
   FileText,
   Image as ImageIcon,
   Paintbrush,
@@ -15,7 +15,6 @@ import {
   Info,
   Flag,
   Award,
-  BookOpenCheck
 } from 'lucide-react';
 
 export interface AdminMenuItem {
@@ -36,14 +35,9 @@ export const ADMIN_MENU_ITEMS: AdminMenuItem[] = [
     icon: Award,
   },
   {
-    label: 'Quản lý IC3',
-    href: '/quan-tri/ic3',
-    icon: BookOpenCheck,
-  },
-  {
-    label: 'Tin tức',
-    href: '/quan-tri/tin-tuc',
-    icon: Newspaper,
+    label: 'Mở rộng',
+    href: '/quan-tri/mo-rong',
+    icon: LayoutGrid,
   },
   {
     label: 'Phong trào',
