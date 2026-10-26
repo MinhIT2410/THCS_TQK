@@ -7,6 +7,8 @@ export const ROUTES = {
   HOME: '/',
   ABOUT: '/gioi-thieu',
   NEWS: '/tin-tuc',
+  EXTENSIONS: '/mo-rong',
+  INTERNATIONAL_IT: '/mo-rong/tin-hoc-quoc-te',
   ACTIVITIES: '/hoat-dong',
   FLAG_CEREMONY: '/hoat-dong/sinh-hoat-dau-tuan',
   MOVEMENTS: '/hoat-dong-phong-trao',

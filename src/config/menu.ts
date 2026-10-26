@@ -45,8 +45,8 @@ export const NAV_MENU: MenuItem[] = [
   },
   {
     title: 'Mở rộng',
-    path: ROUTES.NEWS,
-    id: 'news',
+    path: ROUTES.EXTENSIONS,
+    id: 'extensions',
     showInNavbar: true,
   },
 ];

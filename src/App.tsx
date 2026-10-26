@@ -118,6 +118,8 @@ class RouteLoadErrorBoundary extends React.Component<
 // Heavy admin/report/Excel/PDF/chart code is downloaded only when that route is opened.
 const AboutPage = lazyWithReload(() => import('./pages/AboutPage'));
 const NewsPage = lazyWithReload(() => import('./pages/NewsPage'));
+const ExtensionsPage = lazyWithReload(() => import('./pages/ExtensionsPage'));
+const InternationalITPage = lazyWithReload(() => import('./pages/InternationalITPage'));
 const GalleryPage = lazyWithReload(() => import('./pages/GalleryPage'));
 const DocumentsPage = lazyWithReload(() => import('./pages/DocumentsPage'));
 const ContactPage = lazyWithReload(() => import('./pages/ContactPage'));
@@ -329,6 +331,7 @@ function AppContent() {
     if (viewId === 'home') navigate(ROUTES.HOME);
     else if (viewId === 'about') navigate(ROUTES.ABOUT);
     else if (viewId === 'news') navigate(ROUTES.NEWS);
+    else if (viewId === 'extensions') navigate(ROUTES.EXTENSIONS);
     else if (viewId === 'activities') navigate(ROUTES.ACTIVITIES);
     else if (viewId === 'movements') navigate(ROUTES.MOVEMENTS);
     else if (viewId === 'gallery') navigate(ROUTES.GALLERY);
@@ -420,6 +423,8 @@ function AppContent() {
           <Route path={ROUTES.ABOUT} element={<AboutPage />} />
           <Route path={`${ROUTES.ABOUT}/:slug`} element={<AboutDetailPage />} />
           <Route path={ROUTES.NEWS} element={<NewsPage />} />
+          <Route path={ROUTES.EXTENSIONS} element={<ExtensionsPage />} />
+          <Route path={ROUTES.INTERNATIONAL_IT} element={<InternationalITPage />} />
           <Route path={`${ROUTES.NEWS}/:slug`} element={<NewsDetailPage />} />
           <Route path={ROUTES.ACTIVITIES} element={<MovementsPage />} />
           <Route path={ROUTES.FLAG_CEREMONY} element={<FlagCeremonyPage />} />

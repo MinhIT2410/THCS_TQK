@@ -154,7 +154,7 @@ export default function Footer({ onNavigate, onSubmitSuggestion }: FooterProps) 
                     className="hover:text-blue-400 hover:translate-x-1.5 transition-all duration-200 text-left block"
                   >
                     {link.id === 'about' ? 'Giới thiệu Liên đội' :
-                     link.id === 'news' ? 'Tin tức' :
+                     link.id === 'extensions' ? 'Mở rộng' :
                      link.id === 'activities' ? 'Hoạt động & Phong trào' :
                      link.id === 'gallery' ? 'Thư viện ảnh Đội' :
                      link.id === 'documents' ? 'Văn bản - Hướng dẫn' :

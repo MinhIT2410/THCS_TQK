@@ -33,6 +33,7 @@ export default function Layout() {
     if (pathname === ROUTES.HOME) return 'home';
     if (pathname === ROUTES.ABOUT) return 'about';
     if (pathname === ROUTES.NEWS) return 'news';
+    if (pathname === ROUTES.EXTENSIONS || pathname.startsWith(`${ROUTES.EXTENSIONS}/`)) return 'extensions';
     if (pathname === ROUTES.ACTIVITIES) return 'activities';
     if (pathname === ROUTES.GALLERY) return 'gallery';
     if (pathname === ROUTES.DOCUMENTS) return 'documents';
