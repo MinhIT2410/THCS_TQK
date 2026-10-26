@@ -1,28 +1,40 @@
-# PATCH: IC3 THCS – Chọn khối / Chọn bài
+# PATCH IC3 - cập nhật đúng danh sách dropdown IIG cho 3 khối
 
-## Điều kiện trước khi áp dụng
-Đã cài hai patch trước: trang Mở rộng (`TQK_PATCH_MO_RONG_TIN_HOC_QUOC_TE.zip`) và IC3 THCS (`TQK_PATCH_IC3_THCS_LUYEN_TAP_LINK.zip`). Patch này chỉ cập nhật **một file** trên phiên bản hiện hành.
+## Mục tiêu
+Cập nhật lại trang `Học Tin học quốc tế - IC3` để danh sách **Chọn khối - Chọn bài** bám đúng các mục hiển thị trong ảnh chụp dropdown từ IC3 Review của IIG.
 
 ## File thay đổi
-- `src/pages/InternationalITPage.tsx`: thiết kế lại giao diện IC3 dựa trên bố cục trang IC3 Review, với đúng hai ô chọn **Chọn khối** và **Chọn bài**; mở bài trực tiếp từ IIG ở tab khác.
+- `src/pages/InternationalITPage.tsx`
 
-## Bài đã có đường dẫn trực tiếp được đối chiếu
-- Khối 6 (GS6 Level 1): Chủ đề 1 – Test 1, Test 2.
-- Khối 7 (GS6 Level 2): Chủ đề 1 – Test 1.
-- Khối 8 (GS6 Level 3): Chủ đề 1 – Test 1.
+## Nội dung thay đổi
+- Giữ giao diện theo phong cách IIG.
+- Danh sách bài của **Khối 6, 7, 8** được sửa lại theo đúng ảnh chụp:
+  - Khối 6: 9 bài test + `Chủ đề mở rộng`
+  - Khối 7: 11 bài test + `Chủ đề mở rộng`
+  - Khối 8: 13 bài test + `Chủ đề mở rộng`
+- Bổ sung đầy đủ các mục `Test 3` ở khối 7 và khối 8 theo ảnh.
+- Mục `Chủ đề mở rộng` được hiển thị nhưng **chưa gắn URL**, vì ảnh không cho thấy mã bài trực tiếp.
+- Khi chọn bài có liên kết, nút **Mở bài làm** sẽ mở trực tiếp bài trên IIG.
+- Khi chọn `Chủ đề mở rộng`, nút mở bài bị vô hiệu hóa.
 
-Chỉ bổ sung bài khác sau khi xác minh chính xác đường dẫn; **không tự đoán URL**.
+## Ghi chú về URL
+Các bài test thường dùng cấu trúc:
+`https://ic3review.iigvietnam.edu.vn/newdata/<LEVEL>/<LEVEL>-<CHUDE>-T<SO_TEST> (Published)/index.html`
 
-## Triển khai
-1. Giải nén ZIP vào thư mục làm việc.
-2. Copy `src/pages/InternationalITPage.tsx` vào đúng đường dẫn trong repository và ghi đè.
-3. Mở GitHub Desktop kiểm tra diff chỉ có 1 file thay đổi, commit và push.
-4. Kiểm tra `/mo-rong`, vào thẻ IC3 rồi chọn khối 6/7/8, chọn bài và bấm **Mở bài làm**.
-5. Kiểm tra route `/tin-tuc` cũ và các chức năng khác vẫn giữ nguyên.
+Patch này áp dụng cấu trúc đó cho toàn bộ các mục Test 1/Test 2/Test 3 đang hiển thị trong dropdown IIG.
 
-## Giới hạn
-- Không cần SQL, không sửa schema, không chỉnh quyền hoặc dữ liệu thi đua.
-- Chưa ghi log học sinh/nộp bài hoặc tự nhận điểm; cần module thống kê riêng và cơ chế xác thực kết quả phù hợp.
-- Không điền tự động mật khẩu của bài IIG.
-- Các URL IIG có thể thay đổi; không bảo đảm trang đích còn hoạt động mãi.
-- Chưa kiểm thử build thực tế với toàn bộ node_modules của dự án.
+## Cách copy đè
+1. Giải nén file ZIP patch.
+2. Copy file `src/pages/InternationalITPage.tsx` vào project.
+3. Ghi đè file cũ.
+4. Chạy kiểm tra giao diện trang `/mo-rong/tin-hoc-quoc-te`.
+
+## Cần kiểm tra sau khi cập nhật
+- Chuyển khối 6 / 7 / 8 có đổi danh sách bài đúng hay không.
+- Chọn từng bài bất kỳ xem nút **Mở bài làm** có mở được tab IIG hay không.
+- Chọn `Chủ đề mở rộng` xem nút có bị disable đúng hay không.
+
+## Không thay đổi
+- Không sửa route/menu khác.
+- Không sửa phần thi đua, báo cáo, phân quyền, Supabase.
+- Không thêm SQL.
