@@ -1,37 +1,31 @@
-# PATCH 098 - Bộ khung luyện tập IC3 nội bộ
+# PATCH: 2 thẻ Ôn tập Tin học quốc tế
 
-## Phạm vi
-- **Giữ nguyên** trang IIG, 38 mã mở bài, RPC `ic3_start_attempt` / `ic3_submit_score`, giao diện quản trị và các tính năng thi đua.
-- Thêm trang `/mo-rong/tin-hoc-quoc-te/luyen-tap` cho học sinh đã đăng nhập.
-- Chế độ **Học**: chọn đáp án và nhận giải thích ở cột bên phải.
-- Chế độ **Kiểm tra**: không thấy đáp án trước khi nộp. Supabase chấm và lưu 0–1000 điểm.
-- Bổ sung **3 câu thử nghiệm tự biên soạn** cho khối 6, Chủ đề 1. Đây là bài thử giao diện và quy trình, không phải đề hoàn chỉnh. Khối 7/8 sẽ có danh sách trống đến khi bổ sung nội dung.
+## Kết quả
+- `/mo-rong/tin-hoc-quoc-te`: trang chọn hai thẻ lớn theo phong cách tác vụ nhanh của mục Thi đua.
+- Thẻ **Ôn tập tại trường** mở `/mo-rong/tin-hoc-quoc-te/luyen-tap` (route và SchoolIc3Page đang có).
+- Thẻ **Bài test trên IC3 Review** mở `/mo-rong/tin-hoc-quoc-te/ic3-review`.
+- Giao diện cũ chọn khối/chọn bài IIG được chuyển nguyên chức năng sang `Ic3ReviewPage.tsx`, không thay đổi RPC, mã IC3, log hay nhập điểm.
+- Trên trang IIG đã bỏ ô dẫn ngược sang ôn tập tại trường, vì giờ có trang hai thẻ riêng.
 
-## File thay đổi
-- `src/App.tsx` (thêm route)
-- `src/config/routes.ts` (thêm hằng route)
-- `src/pages/InternationalITPage.tsx` (chỉ thêm liên kết tới luyện tập nội bộ)
-- `src/pages/SchoolIc3Page.tsx` (file mới)
-- `supabase/migrations/098_ic3_school_quiz.sql` (file mới)
+## File thay đổi (chỉ 4 file)
+- `src/pages/InternationalITPage.tsx`: **thay nội dung** bằng trang chọn 2 thẻ.
+- `src/pages/Ic3ReviewPage.tsx`: **file mới**, chứa chức năng IIG cũ.
+- `src/config/routes.ts`: thêm `ROUTES.IC3_REVIEW`.
+- `src/App.tsx`: đăng ký route mới và lazy import trang IIG.
 
 ## Cài đặt
-1. **Sao lưu project** và xác nhận source đang dùng có các patch Mở rộng, IC3 và log mới nhất.
-2. Copy các file `src/` trong ZIP vào đúng đường dẫn. Xem `git diff` trước khi commit; đặc biệt so sánh `App.tsx` nếu source đã có cập nhật khác.
-3. Chạy **duy nhất** `098_ic3_school_quiz.sql` qua SQL Editor Supabase. Migration chạy tạo bảng/RPC + 3 câu mẫu, không tác động dữ liệu log IIG.
-4. Commit/push; thử bằng tài khoản học sinh.
+1. Yêu cầu source của bạn đã có bản `098_ic3_school_quiz` cùng trang `SchoolIc3Page.tsx` và bản IC3 IIG/ghi log đang hoạt động.
+2. Giải nén ZIP tại thư mục project, copy đúng 4 file giữ cấu trúc `src/...` và ghi đè file cũ.
+3. Dùng GitHub Desktop kiểm tra DIFF, chỉ commit các file trên; không ghi đè các bản hotfix khác.
+4. Chạy build/test của dự án trước khi push nếu môi trường đã cài dependency.
 
-## Kiểm thử
-- Khối 6 có một bộ thử 3 câu, khối 7/8 chưa có bài.
-- Chế độ Học: chọn đáp án → bên phải hiện giải thích; không cho sửa đáp án đã chọn.
-- Chế độ Kiểm tra: giải thích chỉ hiện sau khi trả lời đủ và bấm Nộp bài.
-- Kiểm tra SQL: `select user_id,set_id,mode,score,status from public.ic3_school_attempts order by started_at desc limit 10;`
-- Xác minh không lộ đáp án trong RPC `ic3_school_start` (chỉ trả id, prompt, choices).
-- Thử đóng tab giữa chừng: lượt dang dở vẫn ở Supabase nhưng **chưa có giao diện khôi phục**; không tính điểm.
+## Checklist kiểm thử
+- Menu Mở rộng -> Học Tin học quốc tế mở 2 thẻ.
+- Thẻ trường mở bài luyện tập như cũ.
+- Thẻ IIG mở trang chọn khối/bài, xem mã, sao chép mã, ghi log và gửi điểm.
+- Quay về trang hai thẻ; kiểm tra giao diện trên điện thoại và dark mode.
+- Không có SQL migration mới; không sửa Supabase hoặc quản trị.
+- Không xóa dữ liệu/tin tức, không thay đổi thi đua, GVCN, báo cáo.
 
-## Bảo mật và giới hạn
-- Không dùng điểm tự khai báo. Trình duyệt chỉ gửi lựa chọn đáp án, Supabase kiểm tra quyền, chấm và lưu điểm.
-- Chỉ có tài khoản đăng nhập mới mở lượt làm.
-- Dữ liệu câu hỏi/đáp án không cấp quyền SELECT trực tiếp cho anon/authenticated.
-- **Chưa có giao diện quản trị nhập đề, lịch sử cá nhân, phục hồi bài dở và quản lý xuất bản**; đó là các giai đoạn tiếp theo.
-- Câu hỏi mẫu chỉ có 4 lựa chọn, chưa hỗ trợ nhiều đáp án, kéo thả, hình ảnh.
-- Không chạy trực tiếp trên Supabase sản xuất trong lúc học sinh thi; hãy thử trên môi trường dự phòng nếu có.
+## Lưu ý
+Patch dựa trên file mới nhất có sẵn trong ZIP `TQK_PATCH_IC3_BO_KHUNG_LUYEN_TAP_098.zip`. Nếu bạn đã có hotfix riêng cho `InternationalITPage.tsx` hoặc `App.tsx` sau bản này, hãy đối chiếu và ghép thay đổi chứ không copy đè mù.
