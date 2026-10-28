@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { ROUTES } from '../config/routes';
 import { TESTS, LEVELS, type Grade } from '../config/ic3Catalog';
 import { useAuth } from '../features/auth/AuthContext';
@@ -104,10 +104,6 @@ export default function Ic3ReviewPage() {
           </div>
 
           <div className="px-6 md:px-8 py-6 space-y-5">
-            <Link to={ROUTES.IC3_SCHOOL} className="block rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-200 dark:border-emerald-800">
-              <strong>Luyện tập tại trường – Học và giải thích ngay →</strong>
-              <p className="text-sm mt-1">Bài tự biên soạn, làm trực tiếp trên website và chấm điểm trên Supabase. Luyện tập IIG vẫn giữ nguyên bên dưới.</p>
-            </Link>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="block text-sm font-bold text-slate-800 dark:text-slate-100">
                 Môn học
@@ -168,19 +164,17 @@ export default function Ic3ReviewPage() {
               </button>
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-              <h3 className="font-bold text-slate-900 dark:text-white">Ghi nhận luyện tập IC3</h3>
-              {!isAuthenticated ? <p className="text-sm text-amber-700">Đăng nhập tài khoản trường để mở bài, ghi log và gửi điểm.</p> :
-                <p className="text-sm text-slate-600 dark:text-slate-300">Hệ thống ghi nhận lượt mở bài tự động. Khi hoàn thành ở IIG, quay về tab này và nhập điểm hiển thị trên màn hình kết quả.</p>}
-              {attemptId && <div className="flex flex-wrap items-end gap-3">
-                <label className="text-sm font-semibold">Điểm IIG (0–1000)
-                  <input type="number" min="0" max="1000" step="1" value={score} onChange={e => setScore(e.target.value)} placeholder="Ví dụ: 740" className="block mt-1 rounded-lg border px-3 py-2 bg-white dark:bg-slate-900 w-44" />
-                </label>
-                <button type="button" disabled={submitting || !score.trim()} onClick={() => void submitPracticeScore()} className="rounded-lg bg-blue-600 disabled:opacity-50 text-white px-4 py-2 font-semibold">Gửi kết quả</button>
-              </div>}
-              {logStatus && <p role="status" className="text-sm text-blue-700 dark:text-blue-300">{logStatus}</p>}
-              <p className="text-xs text-slate-500">Điểm là kết quả học sinh tự khai báo, không phải dữ liệu đồng bộ trực tiếp từ IIG. Không tự động xác nhận nộp bài khi đóng tab.</p>
-            </div>
+            {(attemptId || logStatus) && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+                {attemptId && <div className="flex flex-wrap items-end gap-3">
+                  <label className="text-sm font-semibold">Điểm IIG (0–1000)
+                    <input type="number" min="0" max="1000" step="1" value={score} onChange={e => setScore(e.target.value)} placeholder="Nhập điểm" className="block mt-1 rounded-lg border px-3 py-2 bg-white dark:bg-slate-900 w-44" />
+                  </label>
+                  <button type="button" disabled={submitting || !score.trim()} onClick={() => void submitPracticeScore()} className="rounded-lg bg-blue-600 disabled:opacity-50 text-white px-4 py-2 font-semibold">Gửi kết quả</button>
+                </div>}
+                {logStatus && <p role="status" className="text-sm text-blue-700 dark:text-blue-300">{logStatus}</p>}
+              </div>
+            )}
             {selectedOption && (
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
                 <p className="font-semibold text-slate-900 dark:text-white">Mã mở bài do nhà trường quản lý</p>
@@ -198,19 +192,6 @@ export default function Ic3ReviewPage() {
                 )}
               </div>
             )}
-            <div className="rounded-2xl border border-blue-100 dark:border-slate-800 bg-blue-50/70 dark:bg-slate-800/60 p-4 text-sm text-slate-600 dark:text-slate-300">
-              <div className="flex items-start gap-2">
-                <ShieldCheck size={18} className="shrink-0 mt-0.5 text-emerald-600" />
-                <div className="space-y-1">
-                  <p>
-                    Danh sách bài được sắp theo đúng menu chọn bài bạn chụp từ trang IC3 Review. Các bài Test 1, Test 2, Test 3 được gắn mở trực tiếp theo cấu trúc liên kết của IIG.
-                  </p>
-                  <p>
-                    Riêng mục <strong>“Chủ đề mở rộng”</strong> hiện chỉ hiển thị trong danh sách để khớp giao diện IIG, chưa gắn URL vì ảnh không cho thấy mã bài cụ thể.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
