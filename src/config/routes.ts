@@ -9,6 +9,7 @@ export const ROUTES = {
   NEWS: '/tin-tuc',
   EXTENSIONS: '/mo-rong',
   INTERNATIONAL_IT: '/mo-rong/tin-hoc-quoc-te',
+  IC3_SCHOOL: '/mo-rong/tin-hoc-quoc-te/luyen-tap',
   ACTIVITIES: '/hoat-dong',
   FLAG_CEREMONY: '/hoat-dong/sinh-hoat-dau-tuan',
   MOVEMENTS: '/hoat-dong-phong-trao',

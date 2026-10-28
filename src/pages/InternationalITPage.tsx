@@ -104,6 +104,10 @@ export default function InternationalITPage() {
           </div>
 
           <div className="px-6 md:px-8 py-6 space-y-5">
+            <Link to={ROUTES.IC3_SCHOOL} className="block rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-200 dark:border-emerald-800">
+              <strong>Luyện tập tại trường – Học và giải thích ngay →</strong>
+              <p className="text-sm mt-1">Bài tự biên soạn, làm trực tiếp trên website và chấm điểm trên Supabase. Luyện tập IIG vẫn giữ nguyên bên dưới.</p>
+            </Link>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="block text-sm font-bold text-slate-800 dark:text-slate-100">
                 Môn học

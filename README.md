@@ -1,20 +1,37 @@
-# IC3 – Nhật ký mở bài & nộp điểm (patch tối thiểu)
+# PATCH 098 - Bộ khung luyện tập IC3 nội bộ
 
-## Thay đổi
-- `src/pages/InternationalITPage.tsx`: chỉ tài khoản đăng nhập mới mở bài; tạo log trên máy chủ trước khi chuyển sang IIG; khi quay về tab Liên đội, học sinh nhập điểm 0–1000 và gửi.
-- `src/pages/admin/AdminIc3Page.tsx`: bảng log 200 lượt gần nhất (mã tài khoản, bài, thời gian, điểm tự khai báo, trạng thái), có nút làm mới.
-- `supabase/migrations/097_ic3_practice_attempts.sql`: bảng dữ liệu, RLS, hai RPC có kiểm tra quyền. Không sửa các bảng thi đua.
+## Phạm vi
+- **Giữ nguyên** trang IIG, 38 mã mở bài, RPC `ic3_start_attempt` / `ic3_submit_score`, giao diện quản trị và các tính năng thi đua.
+- Thêm trang `/mo-rong/tin-hoc-quoc-te/luyen-tap` cho học sinh đã đăng nhập.
+- Chế độ **Học**: chọn đáp án và nhận giải thích ở cột bên phải.
+- Chế độ **Kiểm tra**: không thấy đáp án trước khi nộp. Supabase chấm và lưu 0–1000 điểm.
+- Bổ sung **3 câu thử nghiệm tự biên soạn** cho khối 6, Chủ đề 1. Đây là bài thử giao diện và quy trình, không phải đề hoàn chỉnh. Khối 7/8 sẽ có danh sách trống đến khi bổ sung nội dung.
 
-## Thứ tự triển khai
-1. Chạy `097_ic3_practice_attempts.sql` trong Supabase SQL Editor, sau các migration IC3 095, 096.
-2. Copy đè hai file `src/pages/...` trong ZIP; **chỉ dùng khi đã cài patch IC3 đồng bộ 38 mã**.
-3. Chạy `npm run lint` và `npm run build`, rồi commit/push.
-4. Kiểm tra đăng nhập bằng một tài khoản trường, mở bài, quay về tab trường nhập điểm; xác minh trong quản trị IC3.
+## File thay đổi
+- `src/App.tsx` (thêm route)
+- `src/config/routes.ts` (thêm hằng route)
+- `src/pages/InternationalITPage.tsx` (chỉ thêm liên kết tới luyện tập nội bộ)
+- `src/pages/SchoolIc3Page.tsx` (file mới)
+- `supabase/migrations/098_ic3_school_quiz.sql` (file mới)
 
-## Giới hạn quan trọng
-- Website trường **không thể tự biết** người dùng nhấn SUBMIT ALL bên IIG, cũng không thể tự đọc điểm khi IIG không hỗ trợ tích hợp. `self_reported` là **điểm học sinh tự khai báo**, không phải điểm được IIG xác thực.
-- Nút mở bài ghi log `opened` thành công trước khi tải trang IIG; không chứng minh học sinh bắt đầu làm hoặc nộp bài.
-- Danh sách quản trị hiện hiện UUID tài khoản (chưa ghép bảng thông tin học sinh/lớp).
-- Nếu học sinh tải lại tab trường trước khi gửi điểm, trạng thái lượt mở vẫn được lưu tại Supabase nhưng form nhập điểm trong tab hiện tại bị mất; cần phiên bản tiếp theo khôi phục lượt chưa nộp.
-- Không sao chép đề IIG, không ghi mã truy cập vào log.
-- Không có SQL xóa dữ liệu; file này độc lập và không tác động thi đua.
+## Cài đặt
+1. **Sao lưu project** và xác nhận source đang dùng có các patch Mở rộng, IC3 và log mới nhất.
+2. Copy các file `src/` trong ZIP vào đúng đường dẫn. Xem `git diff` trước khi commit; đặc biệt so sánh `App.tsx` nếu source đã có cập nhật khác.
+3. Chạy **duy nhất** `098_ic3_school_quiz.sql` qua SQL Editor Supabase. Migration chạy tạo bảng/RPC + 3 câu mẫu, không tác động dữ liệu log IIG.
+4. Commit/push; thử bằng tài khoản học sinh.
+
+## Kiểm thử
+- Khối 6 có một bộ thử 3 câu, khối 7/8 chưa có bài.
+- Chế độ Học: chọn đáp án → bên phải hiện giải thích; không cho sửa đáp án đã chọn.
+- Chế độ Kiểm tra: giải thích chỉ hiện sau khi trả lời đủ và bấm Nộp bài.
+- Kiểm tra SQL: `select user_id,set_id,mode,score,status from public.ic3_school_attempts order by started_at desc limit 10;`
+- Xác minh không lộ đáp án trong RPC `ic3_school_start` (chỉ trả id, prompt, choices).
+- Thử đóng tab giữa chừng: lượt dang dở vẫn ở Supabase nhưng **chưa có giao diện khôi phục**; không tính điểm.
+
+## Bảo mật và giới hạn
+- Không dùng điểm tự khai báo. Trình duyệt chỉ gửi lựa chọn đáp án, Supabase kiểm tra quyền, chấm và lưu điểm.
+- Chỉ có tài khoản đăng nhập mới mở lượt làm.
+- Dữ liệu câu hỏi/đáp án không cấp quyền SELECT trực tiếp cho anon/authenticated.
+- **Chưa có giao diện quản trị nhập đề, lịch sử cá nhân, phục hồi bài dở và quản lý xuất bản**; đó là các giai đoạn tiếp theo.
+- Câu hỏi mẫu chỉ có 4 lựa chọn, chưa hỗ trợ nhiều đáp án, kéo thả, hình ảnh.
+- Không chạy trực tiếp trên Supabase sản xuất trong lúc học sinh thi; hãy thử trên môi trường dự phòng nếu có.

@@ -120,6 +120,7 @@ const AboutPage = lazyWithReload(() => import('./pages/AboutPage'));
 const NewsPage = lazyWithReload(() => import('./pages/NewsPage'));
 const ExtensionsPage = lazyWithReload(() => import('./pages/ExtensionsPage'));
 const InternationalITPage = lazyWithReload(() => import('./pages/InternationalITPage'));
+const SchoolIc3Page = lazyWithReload(() => import('./pages/SchoolIc3Page'));
 const GalleryPage = lazyWithReload(() => import('./pages/GalleryPage'));
 const DocumentsPage = lazyWithReload(() => import('./pages/DocumentsPage'));
 const ContactPage = lazyWithReload(() => import('./pages/ContactPage'));
@@ -426,6 +427,7 @@ function AppContent() {
           <Route path={ROUTES.NEWS} element={<NewsPage />} />
           <Route path={ROUTES.EXTENSIONS} element={<ExtensionsPage />} />
           <Route path={ROUTES.INTERNATIONAL_IT} element={<InternationalITPage />} />
+          <Route path={ROUTES.IC3_SCHOOL} element={<SchoolIc3Page />} />
           <Route path={`${ROUTES.NEWS}/:slug`} element={<NewsDetailPage />} />
           <Route path={ROUTES.ACTIVITIES} element={<MovementsPage />} />
           <Route path={ROUTES.FLAG_CEREMONY} element={<FlagCeremonyPage />} />
