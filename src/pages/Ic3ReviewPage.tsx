@@ -14,6 +14,7 @@ export default function Ic3ReviewPage() {
   const [submitting, setSubmitting] = useState(false);
   const [secret, setSecret] = useState<string | null>(null);
   const [codeState, setCodeState] = useState<'idle'|'loading'|'error'>('idle');
+  const [copyState, setCopyState] = useState<'idle'|'success'|'error'>('idle');
   const [grade, setGrade] = useState<Grade>('6');
   const [optionId, setOptionId] = useState<string>('');
 
@@ -24,6 +25,7 @@ export default function Ic3ReviewPage() {
   function handleGradeChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const nextGrade = event.target.value as Grade;
     setSecret(null);
+    setCopyState('idle');
     setCodeState('idle');
     setGrade(nextGrade);
     setOptionId('');
@@ -60,11 +62,22 @@ export default function Ic3ReviewPage() {
   async function showCode() {
     if (!isAuthenticated || !selectedOption) return;
     setCodeState('loading');
+    setCopyState('idle');
     setSecret(null);
     const { data, error } = await supabase.rpc('ic3_get_access_code', { p_test_id: selectedOption.id });
     if (error) { setCodeState('error'); return; }
     setSecret(typeof data === 'string' ? data : '');
     setCodeState('idle');
+  }
+
+  async function copyCode() {
+    if (!secret) return;
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopyState('success');
+    } catch {
+      setCopyState('error');
+    }
   }
 
   return (
@@ -122,7 +135,7 @@ export default function Ic3ReviewPage() {
                 Bài test
                 <select
                   value={optionId}
-                  onChange={(event) => { setOptionId(event.target.value); setSecret(null); setCodeState('idle'); setAttemptId(null); setScore(''); setLogStatus(''); }}
+                  onChange={(event) => { setOptionId(event.target.value); setSecret(null); setCopyState('idle'); setCodeState('idle'); setAttemptId(null); setScore(''); setLogStatus(''); }}
                   className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 font-normal text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
                   <option value="">— Chọn bài —</option>
@@ -187,7 +200,7 @@ export default function Ic3ReviewPage() {
                     </button>
                     {codeState === 'error' && <p className="text-sm text-red-600">Không tải được mã. Kiểm tra bảng/RPC IC3 đã cài và quyền tài khoản.</p>}
                     {secret === '' && <p className="text-sm text-amber-700">Mục này chưa được quản trị nhập mã.</p>}
-                    {secret && <div className="flex flex-wrap items-center gap-3"><code className="rounded bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white">{secret}</code><button type="button" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm" onClick={() => navigator.clipboard.writeText(secret)}>Sao chép mã</button></div>}
+                    {secret && <div className="flex flex-wrap items-center gap-3"><code className="rounded bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-white">{secret}</code><button type="button" onClick={() => void copyCode()} className={'px-3 py-2 rounded-lg text-white text-sm font-semibold transition-colors ' + (copyState === 'success' ? 'bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700')} aria-live="polite">{copyState === 'success' ? '✓ Đã sao chép' : 'Sao chép mã'}</button>{copyState === 'error' && <span role="alert" className="text-sm text-red-600">Không sao chép được. Hãy chọn và sao chép mã thủ công.</span>}</div>}
                   </>
                 )}
               </div>
