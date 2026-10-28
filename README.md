@@ -1,65 +1,29 @@
-# PATCH IC3: thêm ảnh minh họa vào gợi ý + xóa Test thử nghiệm
+# Hotfix 101: Xóa lượt làm của Test nội bộ để sửa/xóa câu hỏi
 
-## Mục tiêu
-1. Phần **Giải thích / Gợi ý** của bài luyện tập nội bộ có thể hiện **hình minh họa thực tế**.
-2. Quản trị viên có thể nhập **URL ảnh minh họa** khi tạo hoặc sửa câu hỏi.
-3. Mẫu Excel thêm cột `Ảnh minh họa (URL)` để nhập hàng loạt.
-4. Thêm nút **Xóa Test** trong quản lý ngân hàng câu hỏi.
-5. Xóa luôn **bài test thử nghiệm / pilot** cũ khỏi hệ thống bằng migration.
+## Nguyên nhân
+SQL 099 không cho sửa hoặc xóa câu hỏi nếu Test đã có lượt làm. Đây là bảo vệ lịch sử điểm, không phải lỗi tải trang.
 
-## File thay đổi
-- `src/components/admin/Ic3QuestionBank.tsx`
-- `src/pages/SchoolIc3Page.tsx`
-- `supabase/migrations/100_ic3_school_images_delete_set.sql`
-- `README.md`
-
-## Thay đổi chính
-### 1) Quản trị câu hỏi
-- Thêm trường: `Ảnh minh họa thực tế (URL, không bắt buộc)`
-- Danh sách câu hỏi có cột báo `Có ảnh / Không`
-- Excel mẫu có thêm cột thứ 10: `Ảnh minh họa (URL)`
-- Import Excel sẽ đọc luôn cột ảnh này
-
-### 2) Giao diện học sinh
-- Sau khi học sinh chọn đáp án (hoặc nộp bài ở chế độ kiểm tra), phần giải thích bên phải sẽ hiện:
-  - đúng / sai
-  - đáp án đúng
-  - giải thích
-  - **hình minh họa thực tế** nếu câu đó có ảnh
-  - mẹo ghi nhớ
-
-### 3) Xóa Test thử nghiệm
-- Migration sẽ xóa set `GS6-L1-CD1-PILOT`
-- Đồng thời xóa mọi lượt làm gắn với set này trước khi xóa set
-- Có thêm RPC `ic3_school_admin_delete_set` để sau này xóa các Test nội bộ chưa có lượt làm
+## Thay đổi
+- `src/components/admin/Ic3QuestionBank.tsx`: nút **Xóa lượt làm thử để sửa câu** trong chi tiết Test.
+- `supabase/migrations/101_ic3_reset_attempts.sql`: thêm 2 RPC có kiểm tra quyền admin, giới hạn **đúng Test đã chọn**, kiểm tra số lượt làm trước khi xóa.
 
 ## Cách cài
-### Bước 1: chép file source
-Copy đè các file đúng đường dẫn:
-- `src/components/admin/Ic3QuestionBank.tsx`
-- `src/pages/SchoolIc3Page.tsx`
+1. Trong Supabase SQL Editor chạy SQL 101 (sau các migration 098–100).
+2. Copy `src/components/admin/Ic3QuestionBank.tsx` theo đúng đường dẫn và kiểm tra diff GitHub Desktop.
+3. Commit, push và làm mới trang quản trị.
+4. Chọn Test cần sửa. Bấm **Xóa lượt làm thử để sửa câu**, kiểm tra số lượt làm và xác nhận hai lần. Sau đó sửa/xóa câu hỏi bình thường.
 
-### Bước 2: chạy migration SQL
-Chạy file:
-- `supabase/migrations/100_ic3_school_images_delete_set.sql`
+## CẢNH BÁO DỮ LIỆU
+**Lệnh này XÓA VĨNH VIỄN tất cả lượt làm, bao gồm điểm và lịch sử của học sinh, thuộc Test được chọn; không chỉ xóa dữ liệu “thử” của quản trị.** Không dùng cho Test chính thức đang có điểm cần lưu.
+- Nếu muốn giữ điểm học sinh, **không xóa lượt làm**; hãy ẩn Test cũ và tạo Test mới.
+- Xóa lượt làm của một Test không ảnh hưởng các Test khác hoặc phần IC3 Review (IIG).
+- Không cần tự xóa bảng thủ công, không sửa RPC chấm điểm.
 
-> Quan trọng: chạy SQL trước rồi deploy frontend, để tránh lỗi RPC chưa tồn tại.
-
-## Kiểm tra sau khi cài
-1. Vào quản trị IC3
-   - Chọn một Test
-   - Sửa một câu hỏi
-   - Nhập URL ảnh minh họa
-   - Lưu thành công
-2. Vào trang học sinh
-   - Làm câu đó
-   - Sau khi trả lời, panel bên phải phải hiện ảnh minh họa
-3. Kiểm tra danh sách Test
-   - Bài `thử nghiệm / pilot` không còn nữa
-4. Thử nút `Xóa Test`
-   - Chỉ xóa được Test chưa có attempt
+## Kiểm thử
+- Test chưa có lượt làm: hiện thông báo, không xóa gì.
+- Test có lượt làm: hiển thị số lượng, hai bước xác nhận; hủy giữ nguyên dữ liệu.
+- Xác nhận chính xác: xóa lượt làm chỉ cho Test đã chọn; sau đó sửa/xóa câu được.
+- Chọn Test khác: điểm và câu hỏi không đổi.
 
 ## Lưu ý
-- Patch này dùng **URL ảnh** để làm nhanh và nhẹ. Nếu sau này muốn đẹp hơn, có thể nâng cấp sang upload ảnh vào Supabase Storage rồi chọn ảnh từ thư viện.
-- Với các ảnh lỗi URL, giao diện chỉ không hiện ảnh; không làm hỏng bài luyện tập.
-- Không sửa phần IIG code, không sửa phần log IC3 Review.
+Patch dựa trên bản có ảnh minh họa + nút xóa Test (SQL 100). Nếu bạn đã hotfix `Ic3QuestionBank.tsx` sau đó, đối chiếu trước khi ghi đè.
