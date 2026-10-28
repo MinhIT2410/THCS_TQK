@@ -7,9 +7,9 @@ import { useAuth } from '../../features/auth/AuthContext';
 
 type Topic = { topic: number; title: string };
 type SetRow = { id: string; topic: number | null; test_number: number | null; title: string; published: boolean; question_count: number };
-type Question = { id: string; position: number; prompt: string; choices: string[]; correct_index: number; explanation: string; tip: string; image_url: string };
+type Question = { id: string; position: number; prompt: string; choices: string[]; correct_index: number; explanation: string; tip: string; image_url: string; image_path?: string | null; image_approved?: boolean };
 const HEADERS = ['STT','Câu hỏi','Đáp án A','Đáp án B','Đáp án C','Đáp án D','Đáp án đúng (A/B/C/D)','Giải thích','Mẹo ghi nhớ','Ảnh minh họa (URL)'];
-const blank = (position:number): Question => ({id:'',position,prompt:'',choices:['','','',''],correct_index:0,explanation:'',tip:'',image_url:''});
+const blank = (position:number): Question => ({id:'',position,prompt:'',choices:['','','',''],correct_index:0,explanation:'',tip:'',image_url:'',image_path:null,image_approved:false});
 const cls = 'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500';
 const btnGhost = 'rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800';
 
@@ -80,7 +80,7 @@ export default function Ic3QuestionBank(){
      await loadQuestions(); await loadCatalog();
    } catch(e){error(e)} finally{setBusy(false)}
  }
- async function save(q:Question){if(!selected)return;setBusy(true);setMessage('');try{await invoke('ic3_school_admin_save_question_media',{p_set_id:selected,p_id:q.id||null,p_position:q.position,p_prompt:q.prompt,p_choices:q.choices,p_correct_index:q.correct_index,p_explanation:q.explanation,p_tip:q.tip,p_image_url:q.image_url||null});await loadQuestions();await loadCatalog();setEdit(null);setMessage('Đã lưu câu hỏi.')}catch(e){error(e)}finally{setBusy(false)}}
+ async function save(q:Question){if(!selected)return;setBusy(true);setMessage('');try{await invoke('ic3_school_admin_save_question_media',{p_set_id:selected,p_id:q.id||null,p_position:q.position,p_prompt:q.prompt,p_choices:q.choices,p_correct_index:q.correct_index,p_explanation:q.explanation,p_tip:q.tip,p_image_url:null});await loadQuestions();await loadCatalog();setEdit(null);setMessage('Đã lưu câu hỏi.')}catch(e){error(e)}finally{setBusy(false)}}
  async function remove(q:Question){if(!selected||!window.confirm('Xóa câu hỏi này?'))return;setBusy(true);try{await invoke('ic3_school_admin_delete_question',{p_set_id:selected,p_question_id:q.id});await loadQuestions();await loadCatalog();setMessage('Đã xóa câu hỏi.')}catch(e){error(e)}finally{setBusy(false)}}
  function template(){
    const rows=[HEADERS,[1,'Một trang web thường dùng cần được lưu để truy cập nhanh. Tính năng phù hợp là gì?','Dấu trang','Lịch sử tải xuống','Ẩn danh','Phóng to','A','Dấu trang lưu địa chỉ của website để mở nhanh vào lần sau.','Bookmark là dấu trang.','https://example.com/hinh-minh-hoa.jpg']];
@@ -88,8 +88,66 @@ export default function Ic3QuestionBank(){
    ws['!cols']=[{wch:8},{wch:75},{wch:30},{wch:30},{wch:30},{wch:30},{wch:24},{wch:75},{wch:45},{wch:48}];
    XLSX.utils.book_append_sheet(wb,ws,'CAU_HOI');XLSX.writeFile(wb,'MAU_NHAP_CAU_HOI_IC3.xlsx');
  }
- async function readExcel(file?:File){if(!file)return;setMessage('');try{const book=XLSX.read(await file.arrayBuffer(),{type:'array'});const sheet=book.Sheets['CAU_HOI'];if(!sheet)throw new Error('Không tìm thấy sheet CAU_HOI');const rows=(XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}) as unknown[][]);if(HEADERS.some((v,i)=>String(rows[0]?.[i]??'').trim()!==v))throw new Error('Tên hoặc thứ tự cột không khớp mẫu Excel cố định');const parsed:Question[]=rows.slice(1).filter(r=>r.some(x=>String(x).trim())).map((r,i)=>{const pos=Number(r[0]);const choices=r.slice(2,6).map(String).map(x=>x.trim());const key=String(r[6]??'').trim().toUpperCase();const prompt=String(r[1]??'').trim(),explanation=String(r[7]??'').trim();const image_url=String(r[9]??'').trim();if(!Number.isInteger(pos)||pos<1||pos>32767||prompt.length<8||choices.length!==4||choices.some(x=>!x)||!['A','B','C','D'].includes(key)||explanation.length<5)throw new Error('Dòng '+(i+2)+' có STT, câu hỏi, đáp án hoặc giải thích không hợp lệ');return {...blank(pos),prompt,choices,correct_index:key.charCodeAt(0)-65,explanation,tip:String(r[8]??'').trim(),image_url};});const pos=new Set(parsed.map(q=>q.position));if(pos.size!==parsed.length)throw new Error('Trùng STT trong Excel');if(!parsed.length)throw new Error('File Excel không có câu hỏi');const existing=new Set(questions.map(x=>x.position));if(parsed.some(x=>existing.has(x.position)))throw new Error('Có STT trùng câu hỏi đã có. Hãy sửa STT trong Excel hoặc chỉnh sửa từng câu trên giao diện.');setPending(parsed);setMessage(`Đã kiểm tra ${parsed.length} câu hợp lệ. Nhấn Nhập vào Test để lưu.`)}catch(e){error(e);setPending([])}}
- async function importAll(){if(!selected||!pending.length)return;setBusy(true);setMessage('');let count=0;try{for(const q of pending){await invoke('ic3_school_admin_save_question_media',{p_set_id:selected,p_id:null,p_position:q.position,p_prompt:q.prompt,p_choices:q.choices,p_correct_index:q.correct_index,p_explanation:q.explanation,p_tip:q.tip,p_image_url:q.image_url||null});count++;}setPending([]);await loadQuestions();await loadCatalog();setMessage(`Đã nhập ${count} câu thành công.`)}catch(e){setMessage(`Đã nhập ${count}/${pending.length} câu; lỗi: ${String(e)}. Tải lại danh sách trước khi thử nhập lại để tránh trùng.`);await loadQuestions();}finally{setBusy(false)}}
+ async function readExcel(file?:File){if(!file)return;setMessage('');try{const book=XLSX.read(await file.arrayBuffer(),{type:'array'});const sheet=book.Sheets['CAU_HOI'];if(!sheet)throw new Error('Không tìm thấy sheet CAU_HOI');const rows=(XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}) as unknown[][]);if(HEADERS.some((v,i)=>String(rows[0]?.[i]??'').trim()!==v))throw new Error('Tên hoặc thứ tự cột không khớp mẫu Excel cố định');const parsed:Question[]=rows.slice(1).filter(r=>r.some(x=>String(x).trim())).map((r,i)=>{const pos=Number(r[0]);const choices=r.slice(2,6).map(String).map(x=>x.trim());const key=String(r[6]??'').trim().toUpperCase();const prompt=String(r[1]??'').trim(),explanation=String(r[7]??'').trim();const image_url=String(r[9]??'').trim();if(image_url)throw new Error('Dòng '+(i+2)+': URL ảnh ngoài bị vô hiệu hóa. Hãy tải ảnh từ máy trong phần sửa câu hỏi.');if(!Number.isInteger(pos)||pos<1||pos>32767||prompt.length<8||choices.length!==4||choices.some(x=>!x)||!['A','B','C','D'].includes(key)||explanation.length<5)throw new Error('Dòng '+(i+2)+' có STT, câu hỏi, đáp án hoặc giải thích không hợp lệ');return {...blank(pos),prompt,choices,correct_index:key.charCodeAt(0)-65,explanation,tip:String(r[8]??'').trim(),image_url};});const pos=new Set(parsed.map(q=>q.position));if(pos.size!==parsed.length)throw new Error('Trùng STT trong Excel');if(!parsed.length)throw new Error('File Excel không có câu hỏi');const existing=new Set(questions.map(x=>x.position));if(parsed.some(x=>existing.has(x.position)))throw new Error('Có STT trùng câu hỏi đã có. Hãy sửa STT trong Excel hoặc chỉnh sửa từng câu trên giao diện.');setPending(parsed);setMessage(`Đã kiểm tra ${parsed.length} câu hợp lệ. Nhấn Nhập vào Test để lưu.`)}catch(e){error(e);setPending([])}}
+ async function importAll(){if(!selected||!pending.length)return;setBusy(true);setMessage('');let count=0;try{for(const q of pending){await invoke('ic3_school_admin_save_question_media',{p_set_id:selected,p_id:null,p_position:q.position,p_prompt:q.prompt,p_choices:q.choices,p_correct_index:q.correct_index,p_explanation:q.explanation,p_tip:q.tip,p_image_url:null});count++;}setPending([]);await loadQuestions();await loadCatalog();setMessage(`Đã nhập ${count} câu thành công.`)}catch(e){setMessage(`Đã nhập ${count}/${pending.length} câu; lỗi: ${String(e)}. Tải lại danh sách trước khi thử nhập lại để tránh trùng.`);await loadQuestions();}finally{setBusy(false)}}
+
+ const imagePublicUrl=(path:string)=>supabase.storage.from('ic3-illustrations').getPublicUrl(path).data.publicUrl;
+ async function compressImage(file:File):Promise<Blob>{
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Chỉ nhận JPG, PNG hoặc WebP.');
+  if(file.size>12*1024*1024)throw new Error('Ảnh gốc vượt 12 MB.');
+  const source=await createImageBitmap(file);
+  try{
+    const ratio=Math.min(1,800/source.width,800/source.height);
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(source.width*ratio)); canvas.height=Math.max(1,Math.round(source.height*ratio));
+    const ctx=canvas.getContext('2d'); if(!ctx)throw new Error('Trình duyệt không hỗ trợ xử lý ảnh.');
+    ctx.drawImage(source,0,0,canvas.width,canvas.height);
+    for(const quality of [0.8,0.7,0.6,0.48,0.36]){
+      const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/webp',quality));
+      if(blob && blob.type==='image/webp' && blob.size<=150*1024)return blob;
+    }
+    throw new Error('Ảnh vẫn quá 150KB sau khi nén. Hãy chọn ảnh ít chi tiết hơn.');
+  }finally{source.close();}
+ }
+ async function uploadIllustration(file?:File){
+  if(!file||!edit?.id||!selected)return;
+  setBusy(true);setMessage('');
+  try{
+    const blob=await compressImage(file);
+    const path=`${selected}/${edit.id}/${crypto.randomUUID()}.webp`;
+    const {error:e}=await supabase.storage.from('ic3-illustrations').upload(path,blob,{contentType:'image/webp',cacheControl:'31536000',upsert:false});
+    if(e)throw new Error('Không tải được ảnh: '+e.message);
+    try{
+      await invoke('ic3_school_admin_set_image',{p_set_id:selected,p_question_id:edit.id,p_image_path:path});
+    }catch(e){
+      await supabase.storage.from('ic3-illustrations').remove([path]);
+      throw e;
+    }
+    setEdit({...edit,image_path:path,image_approved:false,image_url:''});
+    await loadQuestions();
+    setMessage(`Đã tải ảnh WebP ${Math.round(blob.size/1024)} KB. Xem trước rồi bấm duyệt.`);
+  }catch(e){error(e)}finally{setBusy(false)}
+ }
+ async function approveImage(approved:boolean){
+  if(!edit?.id||!selected)return;
+  setBusy(true);
+  try{
+    await invoke('ic3_school_admin_approve_image',{p_set_id:selected,p_question_id:edit.id,p_approved:approved});
+    setEdit({...edit,image_approved:approved});
+    await loadQuestions();
+    setMessage(approved?'Đã duyệt ảnh cho học sinh.':'Đã thu hồi duyệt ảnh.');
+  }catch(e){error(e)}finally{setBusy(false)}
+ }
+ async function removeImage(){
+  if(!edit?.id||!selected||!window.confirm('Bỏ ảnh minh họa của câu hỏi này?'))return;
+  setBusy(true);
+  try{
+    await invoke('ic3_school_admin_set_image',{p_set_id:selected,p_question_id:edit.id,p_image_path:null});
+    setEdit({...edit,image_path:null,image_approved:false,image_url:''});
+    await loadQuestions();
+    setMessage('Đã bỏ ảnh khỏi câu hỏi.');
+  }catch(e){error(e)}finally{setBusy(false)}
+ }
  if(!allowed)return <p className="rounded-xl border p-4">Không có quyền quản trị ngân hàng câu hỏi IC3.</p>;
  return <section className="space-y-5">
   <div className="rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-800 p-5 text-white flex flex-wrap items-center justify-between gap-3">
@@ -131,7 +189,24 @@ export default function Ic3QuestionBank(){
     <div className="rounded-xl bg-amber-50 dark:bg-slate-800 p-3 text-sm text-slate-700 dark:text-slate-200"><b>Gợi ý nâng chất lượng:</b> Với các câu hỏi dễ nhầm, nên thêm <b>ảnh minh họa thực tế</b> (ví dụ cửa sổ trình duyệt, biểu tượng thiết bị, ảnh cổng kết nối, giao diện hệ điều hành...) để học sinh nhìn là nhớ.</div>
     <div className="flex flex-wrap gap-2"><button disabled={busy} className="rounded-xl bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 flex items-center gap-2" onClick={()=>setEdit(blank(questions.length?Math.max(...questions.map(x=>x.position))+1:1))}><Plus size={16}/> Thêm câu hỏi</button><label className="rounded-xl border text-sm font-semibold px-4 py-2.5 flex items-center gap-2 cursor-pointer"><FileUp size={17}/> Chọn Excel<input type="file" accept=".xlsx,.xls" className="hidden" onChange={e=>{void readExcel(e.target.files?.[0]);e.target.value='';}}/></label>{pending.length>0&&<button disabled={busy} onClick={()=>void importAll()} className="rounded-xl bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5">Nhập {pending.length} câu vào Test</button>}</div>
     <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-slate-500 border-b"><th className="py-2">STT</th><th>Câu hỏi</th><th>Đáp án</th><th>Ảnh</th><th className="text-right">Thao tác</th></tr></thead><tbody>{questions.map(q=><tr key={q.id} className="border-b dark:border-slate-800"><td className="py-3 w-14">{q.position}</td><td className="py-3 pr-3">{q.prompt}</td><td className="py-3">{String.fromCharCode(65+q.correct_index)}</td><td className="py-3">{q.image_url ? <span className="inline-flex items-center gap-1 text-emerald-700 text-xs"><ImageIcon size={14}/> Có ảnh</span> : <span className="text-slate-400 text-xs">Không</span>}</td><td className="py-3"><div className="flex justify-end gap-2"><button title="Sửa câu" onClick={()=>setEdit({...q,choices:[...q.choices]})} className="text-blue-600 p-2"><Pencil size={17}/></button><button title="Xóa câu" onClick={()=>void remove(q)} className="text-red-600 p-2"><Trash2 size={17}/></button></div></td></tr>)}</tbody></table>{!questions.length&&<p className="p-5 text-center text-sm text-slate-500">Test chưa có câu hỏi. Thêm từng câu hoặc nhập Excel.</p>}</div></div>}
-  {edit&&<div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 dark:bg-slate-900 dark:border-blue-900 p-4 md:p-5 space-y-3"><h3 className="font-bold">{edit.id?'Chỉnh sửa':'Thêm'} câu hỏi</h3><div className="grid md:grid-cols-[90px_1fr] gap-3"><label className="text-sm">STT<input className={cls} type="number" min={1} value={edit.position} onChange={e=>setEdit({...edit,position:Number(e.target.value)})}/></label><label className="text-sm">Nội dung câu hỏi<textarea rows={2} className={cls} value={edit.prompt} onChange={e=>setEdit({...edit,prompt:e.target.value})}/></label></div><div className="grid md:grid-cols-2 gap-3">{edit.choices.map((c,i)=><label key={i} className="text-sm">Đáp án {String.fromCharCode(65+i)}<input className={cls} value={c} onChange={e=>setEdit({...edit,choices:edit.choices.map((v,j)=>j===i?e.target.value:v)})}/></label>)}</div><label className="text-sm block">Đáp án đúng<select className={cls} value={edit.correct_index} onChange={e=>setEdit({...edit,correct_index:Number(e.target.value)})}>{['A','B','C','D'].map((x,i)=><option key={x} value={i}>{x}</option>)}</select></label><label className="text-sm block">Giải thích sau khi học sinh trả lời<textarea rows={3} className={cls} value={edit.explanation} onChange={e=>setEdit({...edit,explanation:e.target.value})}/></label><label className="text-sm block">Mẹo ghi nhớ (không bắt buộc)<textarea rows={2} className={cls} value={edit.tip} onChange={e=>setEdit({...edit,tip:e.target.value})}/></label><label className="text-sm block">Ảnh minh họa thực tế (URL, không bắt buộc)<input className={cls} value={edit.image_url} onChange={e=>setEdit({...edit,image_url:e.target.value})} placeholder="https://..."/></label>{edit.image_url && <div className="rounded-xl border bg-white dark:bg-slate-950 p-3"><div className="text-xs text-slate-500 mb-2">Xem trước ảnh minh họa</div><img src={edit.image_url} alt="Ảnh minh họa" className="max-h-56 rounded-lg border object-contain" onError={(e)=>{(e.currentTarget.style.display='none');}} /></div>}<div className="flex gap-2"><button disabled={busy} onClick={()=>void save(edit)} className="rounded-xl bg-blue-600 text-white px-5 py-2.5 font-bold flex items-center gap-2"><Save size={16}/> Lưu câu hỏi</button><button onClick={()=>setEdit(null)} className="rounded-xl border px-4 py-2.5">Hủy</button></div></div>}
+  {edit&&<div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 dark:bg-slate-900 dark:border-blue-900 p-4 md:p-5 space-y-3"><h3 className="font-bold">{edit.id?'Chỉnh sửa':'Thêm'} câu hỏi</h3><div className="grid md:grid-cols-[90px_1fr] gap-3"><label className="text-sm">STT<input className={cls} type="number" min={1} value={edit.position} onChange={e=>setEdit({...edit,position:Number(e.target.value)})}/></label><label className="text-sm">Nội dung câu hỏi<textarea rows={2} className={cls} value={edit.prompt} onChange={e=>setEdit({...edit,prompt:e.target.value})}/></label></div><div className="grid md:grid-cols-2 gap-3">{edit.choices.map((c,i)=><label key={i} className="text-sm">Đáp án {String.fromCharCode(65+i)}<input className={cls} value={c} onChange={e=>setEdit({...edit,choices:edit.choices.map((v,j)=>j===i?e.target.value:v)})}/></label>)}</div><label className="text-sm block">Đáp án đúng<select className={cls} value={edit.correct_index} onChange={e=>setEdit({...edit,correct_index:Number(e.target.value)})}>{['A','B','C','D'].map((x,i)=><option key={x} value={i}>{x}</option>)}</select></label><label className="text-sm block">Giải thích sau khi học sinh trả lời<textarea rows={3} className={cls} value={edit.explanation} onChange={e=>setEdit({...edit,explanation:e.target.value})}/></label><label className="text-sm block">Mẹo ghi nhớ (không bắt buộc)<textarea rows={2} className={cls} value={edit.tip} onChange={e=>setEdit({...edit,tip:e.target.value})}/></label><div className="rounded-xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-3">
+  <div className="font-semibold text-sm">Ảnh minh họa do trường quản lý (WebP)</div>
+  <p className="text-xs text-slate-500">Chỉ nhận ảnh từ máy, tự giảm về tối đa 800px / 150KB. Ảnh mới mặc định chưa duyệt, học sinh chưa thấy.</p>
+  <label className="inline-flex cursor-pointer items-center rounded-lg bg-indigo-600 text-white px-4 py-2 font-semibold text-sm">
+    Chọn ảnh, nén và tải lên
+    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={busy || !edit.id} onChange={e=>{void uploadIllustration(e.target.files?.[0]);e.target.value='';}} />
+  </label>
+  {!edit.id && <p className="text-xs text-amber-700">Vui lòng lưu câu hỏi trước, rồi bấm Sửa để gắn ảnh.</p>}
+  {edit.image_path && <div className="space-y-2">
+    <img src={imagePublicUrl(edit.image_path)} loading="lazy" alt="Ảnh chờ kiểm duyệt" className="max-h-56 w-auto rounded-lg border object-contain" />
+    <div className="flex items-center flex-wrap gap-2">
+      <span className={edit.image_approved?'text-emerald-700 text-sm font-semibold':'text-amber-700 text-sm font-semibold'}>{edit.image_approved?'Đã duyệt · Học sinh được xem':'Chưa duyệt · Học sinh không thấy'}</span>
+      {!edit.image_approved && <button type="button" disabled={busy} onClick={()=>void approveImage(true)} className="rounded-lg border border-emerald-400 text-emerald-700 text-sm font-bold px-3 py-2">Xác nhận ảnh đúng và duyệt</button>}
+      {edit.image_approved && <button type="button" disabled={busy} onClick={()=>void approveImage(false)} className="rounded-lg border border-amber-400 text-amber-700 text-sm font-bold px-3 py-2">Thu hồi duyệt</button>}
+      <button type="button" disabled={busy} onClick={()=>void removeImage()} className="rounded-lg border border-red-300 text-red-700 text-sm font-bold px-3 py-2">Bỏ ảnh khỏi câu</button>
+    </div>
+  </div>}
+</div><div className="flex gap-2"><button disabled={busy} onClick={()=>void save(edit)} className="rounded-xl bg-blue-600 text-white px-5 py-2.5 font-bold flex items-center gap-2"><Save size={16}/> Lưu câu hỏi</button><button onClick={()=>setEdit(null)} className="rounded-xl border px-4 py-2.5">Hủy</button></div></div>}
   {message&&<div role="status" className="rounded-xl border border-blue-200 bg-blue-50 text-blue-800 p-3 text-sm dark:bg-slate-900 dark:text-blue-300">{message}</div>}
  </section>;
 }
