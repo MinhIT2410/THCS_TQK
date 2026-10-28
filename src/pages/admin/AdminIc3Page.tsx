@@ -4,7 +4,8 @@ import { useAuth } from '../../features/auth/AuthContext';
 import { LEVELS, TESTS, type Grade } from '../../config/ic3Catalog';
 import Ic3QuestionBank from '../../components/admin/Ic3QuestionBank';
 import Ic3AdminStatistics from '../../components/admin/Ic3AdminStatistics';
-import { BookOpenCheck, KeyRound, BarChart3 } from 'lucide-react';
+import { BookOpenCheck, KeyRound, BarChart3, TableProperties } from 'lucide-react';
+import Ic3ClassGradebook from '../../components/admin/Ic3ClassGradebook';
 import { useSearchParams } from 'react-router-dom';
 
 type CodeRow = { test_id: string; access_code: string; updated_at: string };
@@ -55,8 +56,8 @@ function Ic3ReviewManagement() {
 }
 
 
-type Ic3Tab = 'bank' | 'review' | 'statistics';
-const validTabs: Ic3Tab[] = ['bank','review','statistics'];
+type Ic3Tab = 'bank' | 'review' | 'statistics' | 'gradebook';
+const validTabs: Ic3Tab[] = ['bank','review','statistics','gradebook'];
 export default function AdminIc3Page() {
   const [searchParams,setSearchParams] = useSearchParams();
   const raw = searchParams.get('tab');
@@ -65,6 +66,7 @@ export default function AdminIc3Page() {
     {key:'bank' as const, title:'Ngân hàng câu hỏi nội bộ', icon:BookOpenCheck},
     {key:'review' as const, title:'IC3 Review (IIG)', icon:KeyRound},
     {key:'statistics' as const, title:'Thống kê', icon:BarChart3},
+    {key:'gradebook' as const, title:'Bảng điểm & nhật ký nộp', icon:TableProperties},
   ];
   return <div className="max-w-6xl mx-auto space-y-6 pb-10">
     <header className="pt-2">
@@ -81,6 +83,7 @@ export default function AdminIc3Page() {
       {tab==='bank'&&<Ic3QuestionBank/>}
       {tab==='review'&&<Ic3ReviewManagement/>}
       {tab==='statistics'&&<Ic3AdminStatistics/>}
+      {tab==='gradebook'&&<Ic3ClassGradebook/>}
     </div>
   </div>;
 }
