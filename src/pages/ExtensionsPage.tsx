@@ -8,7 +8,7 @@ const tools = [
   {
     id: 'international-it',
     name: 'Học Tin học quốc tế – IC3',
-    description: 'Luyện tập IC3 dành cho học sinh THCS qua IC3 Review.',
+    description: 'Luyện tập IC3 dành cho học sinh THCS',
     path: ROUTES.INTERNATIONAL_IT,
     Icon: MonitorPlay,
   },
