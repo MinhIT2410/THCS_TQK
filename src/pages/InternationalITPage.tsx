@@ -8,6 +8,10 @@ import { supabase } from '../services/supabaseClient';
 
 export default function InternationalITPage() {
   const { isAuthenticated } = useAuth();
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [score, setScore] = useState('');
+  const [logStatus, setLogStatus] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [secret, setSecret] = useState<string | null>(null);
   const [codeState, setCodeState] = useState<'idle'|'loading'|'error'>('idle');
   const [grade, setGrade] = useState<Grade>('6');
@@ -23,6 +27,34 @@ export default function InternationalITPage() {
     setCodeState('idle');
     setGrade(nextGrade);
     setOptionId('');
+    setAttemptId(null); setScore(''); setLogStatus('');
+  }
+
+  async function startPractice() {
+    if (!selectedOption?.url || !isAuthenticated || submitting) return;
+    // Open synchronously to avoid browser popup blocking across await.
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) { setLogStatus('Trình duyệt đã chặn tab mới. Hãy cho phép cửa sổ bật lên rồi thử lại.'); return; }
+    setSubmitting(true); setLogStatus('Đang ghi nhận lượt mở bài...');
+    const { data, error } = await supabase.rpc('ic3_start_attempt', { p_test_id: selectedOption.id });
+    if (error || typeof data !== 'string') {
+      tab.close(); setLogStatus('Chưa ghi được lượt bắt đầu: ' + (error?.message ?? 'Dữ liệu không hợp lệ')); setSubmitting(false); return;
+    }
+    setAttemptId(data); setScore(''); setLogStatus('Đã ghi nhận lượt mở. Làm bài trên IIG, sau đó quay về đây gửi điểm.');
+    tab.location.replace(selectedOption.url); setSubmitting(false);
+  }
+
+  async function submitPracticeScore() {
+    if (!attemptId || submitting) return;
+    if (!/^(?:0|[1-9]\d{0,3})$/.test(score.trim()) || Number(score) > 1000) {
+      setLogStatus('Điểm phải là số nguyên từ 0 đến 1000.'); return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.rpc('ic3_submit_score', { p_attempt_id: attemptId, p_score: Number(score) });
+    setSubmitting(false);
+    if (error) { setLogStatus('Không lưu được điểm: ' + error.message); return; }
+    setLogStatus('Đã ghi điểm do học sinh khai báo (chưa xác minh với IIG).');
+    setAttemptId(null); setScore('');
   }
 
   async function showCode() {
@@ -90,7 +122,7 @@ export default function InternationalITPage() {
                 Bài test
                 <select
                   value={optionId}
-                  onChange={(event) => { setOptionId(event.target.value); setSecret(null); setCodeState('idle'); }}
+                  onChange={(event) => { setOptionId(event.target.value); setSecret(null); setCodeState('idle'); setAttemptId(null); setScore(''); setLogStatus(''); }}
                   className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 font-normal text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
                   <option value="">— Chọn bài —</option>
@@ -122,26 +154,29 @@ export default function InternationalITPage() {
                 </p>
               </div>
 
-              {selectedOption?.url ? (
-                <a
-                  href={selectedOption.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-3 shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                >
-                  Mở bài làm <ExternalLink size={16} />
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-300 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold px-5 py-3 cursor-not-allowed"
-                >
-                  Mở bài làm
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={!isAuthenticated || !selectedOption?.url || submitting}
+                onClick={() => void startPractice()}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold px-5 py-3 shadow-md"
+              >
+                Mở bài làm <ExternalLink size={16} />
+              </button>
             </div>
 
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+              <h3 className="font-bold text-slate-900 dark:text-white">Ghi nhận luyện tập IC3</h3>
+              {!isAuthenticated ? <p className="text-sm text-amber-700">Đăng nhập tài khoản trường để mở bài, ghi log và gửi điểm.</p> :
+                <p className="text-sm text-slate-600 dark:text-slate-300">Hệ thống ghi nhận lượt mở bài tự động. Khi hoàn thành ở IIG, quay về tab này và nhập điểm hiển thị trên màn hình kết quả.</p>}
+              {attemptId && <div className="flex flex-wrap items-end gap-3">
+                <label className="text-sm font-semibold">Điểm IIG (0–1000)
+                  <input type="number" min="0" max="1000" step="1" value={score} onChange={e => setScore(e.target.value)} placeholder="Ví dụ: 740" className="block mt-1 rounded-lg border px-3 py-2 bg-white dark:bg-slate-900 w-44" />
+                </label>
+                <button type="button" disabled={submitting || !score.trim()} onClick={() => void submitPracticeScore()} className="rounded-lg bg-blue-600 disabled:opacity-50 text-white px-4 py-2 font-semibold">Gửi kết quả</button>
+              </div>}
+              {logStatus && <p role="status" className="text-sm text-blue-700 dark:text-blue-300">{logStatus}</p>}
+              <p className="text-xs text-slate-500">Điểm là kết quả học sinh tự khai báo, không phải dữ liệu đồng bộ trực tiếp từ IIG. Không tự động xác nhận nộp bài khi đóng tab.</p>
+            </div>
             {selectedOption && (
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
                 <p className="font-semibold text-slate-900 dark:text-white">Mã mở bài do nhà trường quản lý</p>

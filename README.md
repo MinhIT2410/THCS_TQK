@@ -1,27 +1,20 @@
-# Patch đồng bộ 38 mã IC3 GS6 – Khối 6, 7, 8
+# IC3 – Nhật ký mở bài & nộp điểm (patch tối thiểu)
 
-## Nội dung
-- Khối 6 / Level 1: **9 bài + 1 Chủ đề mở rộng = 10 mã**.
-- Khối 7 / Level 2: **12 bài + 1 Chủ đề mở rộng = 13 mã**.
-- Khối 8 / Level 3: **14 bài + 1 Chủ đề mở rộng = 15 mã**.
-- Tổng **38 mã** do quản trị cung cấp (không tự tạo mã).
-- Chỉnh danh sách **Chủ đề 2–5 của Level 3** theo đúng tên và thứ tự trong bộ mã mới, tránh lấy nhầm mật khẩu.
-- Quản trị IC3 quản lý cả Chủ đề mở rộng; học sinh đã đăng nhập có thể lấy và sao chép mã Chủ đề mở rộng.
-- Chủ đề mở rộng chưa có link IIG trực tiếp, nên nút Mở bài của mục này vẫn không hoạt động.
+## Thay đổi
+- `src/pages/InternationalITPage.tsx`: chỉ tài khoản đăng nhập mới mở bài; tạo log trên máy chủ trước khi chuyển sang IIG; khi quay về tab Liên đội, học sinh nhập điểm 0–1000 và gửi.
+- `src/pages/admin/AdminIc3Page.tsx`: bảng log 200 lượt gần nhất (mã tài khoản, bài, thời gian, điểm tự khai báo, trạng thái), có nút làm mới.
+- `supabase/migrations/097_ic3_practice_attempts.sql`: bảng dữ liệu, RLS, hai RPC có kiểm tra quyền. Không sửa các bảng thi đua.
 
-## Cách cài chính xác
-1. **Điều kiện tiên quyết:** Đã áp dụng `TQK_PATCH_QUAN_TRI_MO_RONG_IC3_DUNG_CAU_TRUC.zip` và migration `095_ic3_test_access_codes.sql`. Nếu chưa, áp dụng patch quản trị này trước.
-2. Copy đè đúng 3 file code trong ZIP này vào source mới nhất:
-   - `src/config/ic3Catalog.ts`
-   - `src/pages/admin/AdminIc3Page.tsx`
-   - `src/pages/InternationalITPage.tsx`
-3. Chạy `supabase/migrations/096_ic3_allow_extension.sql` trong Supabase SQL Editor để cho phép mã Chủ đề mở rộng.
-4. **Chạy RIÊNG** `PRIVATE_RUN_MANUALLY_IC3_38_CODES.sql` trong Supabase SQL Editor để nhập 38 mã.
-5. **KHÔNG đưa file PRIVATE...SQL vào GitHub, không commit và không triển khai qua Vercel.** Để ngoài thư mục dự án. Lưu trữ và chia sẻ hạn chế.
-6. Kiểm tra admin ở Quản trị → Mở rộng → Quản lý Tin học quốc tế (10/13/15 mục); học sinh đăng nhập thử chọn bài, nhấn xem và sao chép mã. Tài khoản khách không được đọc mã.
+## Thứ tự triển khai
+1. Chạy `097_ic3_practice_attempts.sql` trong Supabase SQL Editor, sau các migration IC3 095, 096.
+2. Copy đè hai file `src/pages/...` trong ZIP; **chỉ dùng khi đã cài patch IC3 đồng bộ 38 mã**.
+3. Chạy `npm run lint` và `npm run build`, rồi commit/push.
+4. Kiểm tra đăng nhập bằng một tài khoản trường, mở bài, quay về tab trường nhập điểm; xác minh trong quản trị IC3.
 
-## Lưu ý
-- Không tự điền mật khẩu vào giao diện IIG; học sinh sao chép và dán vào bài.
-- Các URL bài IIG đang theo cấu trúc đoán từ tên; chưa kiểm tra trực tiếp toàn bộ 35 URL.
-- Không sửa logic thi đua, quyền khác, danh mục Tin tức hoặc dữ liệu khác.
-- Chưa thực hiện build đầy đủ hoặc chạy SQL trên Supabase thật.
+## Giới hạn quan trọng
+- Website trường **không thể tự biết** người dùng nhấn SUBMIT ALL bên IIG, cũng không thể tự đọc điểm khi IIG không hỗ trợ tích hợp. `self_reported` là **điểm học sinh tự khai báo**, không phải điểm được IIG xác thực.
+- Nút mở bài ghi log `opened` thành công trước khi tải trang IIG; không chứng minh học sinh bắt đầu làm hoặc nộp bài.
+- Danh sách quản trị hiện hiện UUID tài khoản (chưa ghép bảng thông tin học sinh/lớp).
+- Nếu học sinh tải lại tab trường trước khi gửi điểm, trạng thái lượt mở vẫn được lưu tại Supabase nhưng form nhập điểm trong tab hiện tại bị mất; cần phiên bản tiếp theo khôi phục lượt chưa nộp.
+- Không sao chép đề IIG, không ghi mã truy cập vào log.
+- Không có SQL xóa dữ liệu; file này độc lập và không tác động thi đua.

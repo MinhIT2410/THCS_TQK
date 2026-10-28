@@ -13,6 +13,8 @@ export default function AdminIc3Page() {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [attempts, setAttempts] = useState<Array<{id:string;user_id:string;test_id:string;started_at:string;submitted_at:string|null;score:number|null;status:string}>>([]);
+  const [attemptError, setAttemptError] = useState('');
   const tests = useMemo(() => TESTS[grade], [grade]);
   const codes = useMemo(() => new Map(rows.map(x => [x.test_id, x])), [rows]);
   const selected = tests.find(x => x.id === testId);
@@ -22,7 +24,12 @@ export default function AdminIc3Page() {
     if (error) setStatus('Không đọc được dữ liệu IC3. Hãy kiểm tra migration và quyền: ' + error.message);
     else { setRows((data ?? []) as CodeRow[]); setStatus(''); }
   }
-  useEffect(() => { if (canManage) void load(); }, [canManage]);
+  async function loadAttempts() {
+    const { data, error } = await supabase.from('ic3_practice_attempts').select('id,user_id,test_id,started_at,submitted_at,score,status').order('started_at', { ascending: false }).limit(200);
+    if (error) setAttemptError(error.message);
+    else { setAttempts((data ?? []) as typeof attempts); setAttemptError(''); }
+  }
+  useEffect(() => { if (canManage) { void load(); void loadAttempts(); } }, [canManage]);
   useEffect(() => { setInput(codes.get(testId)?.access_code ?? ''); }, [testId, rows]);
   async function save() {
     if (!canManage || !selected) return;
@@ -44,6 +51,12 @@ export default function AdminIc3Page() {
       {status && <p role="status" className="sm:col-span-3 text-sm text-blue-700 dark:text-blue-300">{status}</p>}
     </div>
     <div className="rounded-2xl bg-white dark:bg-slate-900 border p-5"><h2 className="font-semibold mb-3">Tình trạng nhập mã · {LEVELS[grade].gradeLabel}</h2><div className="grid sm:grid-cols-2 gap-2">{tests.map(t => <div key={t.id} className="flex gap-2 text-sm items-center border-b py-2"><span className={codes.has(t.id) ? 'text-emerald-600' : 'text-slate-400'}>{codes.has(t.id) ? '●' : '○'}</span><span>{t.name}</span></div>)}</div></div>
+    <section className="rounded-2xl bg-white dark:bg-slate-900 border p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Nhật ký luyện tập IC3 (200 lượt gần nhất)</h2><button type="button" onClick={() => void loadAttempts()} className="border rounded-lg px-3 py-2 text-sm">Làm mới</button></div>
+      <p className="text-xs text-slate-500">Điểm học sinh tự khai báo, chưa được IIG xác minh. Mã tài khoản dùng để đối chiếu với danh sách tài khoản trường.</p>
+      {attemptError && <p className="text-sm text-red-600">Không tải được log: {attemptError}</p>}
+      <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr className="text-left border-b"><th className="p-2">Tài khoản (UUID)</th><th className="p-2">Bài</th><th className="p-2">Mở lúc</th><th className="p-2">Điểm</th><th className="p-2">Trạng thái</th></tr></thead><tbody>{attempts.map(a => <tr key={a.id} className="border-b"><td className="p-2 font-mono text-xs">{a.user_id}</td><td className="p-2">{a.test_id}</td><td className="p-2 whitespace-nowrap">{new Date(a.started_at).toLocaleString('vi-VN')}</td><td className="p-2">{a.score ?? '—'}</td><td className="p-2">{a.status === 'self_reported' ? 'Đã khai báo điểm' : 'Đã mở bài'}</td></tr>)}</tbody></table></div>
+    </section>
     <p className="text-xs text-slate-500">Mã chỉ được cung cấp cho người đăng nhập có quyền theo cấu hình Supabase. Không tự điền mã vào trang IIG, học sinh sao chép và dán vào bài.</p>
   </div>;
 }
