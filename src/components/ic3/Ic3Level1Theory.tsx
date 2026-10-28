@@ -1,0 +1,58 @@
+import React, { useState } from 'react';
+import { BookOpen, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+
+// Tóm tắt diễn giải độc lập dựa trên các objective domains chính thức của Certiport GS6 Level 1.
+const lessons = [
+  { title: 'Căn bản về công nghệ', en: 'Technology Basics', sections: [
+    { heading: 'Môi trường số và trình duyệt', body: 'Hệ điều hành quản lý thiết bị và ứng dụng; trình duyệt dùng để truy cập các trang web. Phân biệt trình duyệt (Chrome, Edge) với công cụ tìm kiếm (Google, Bing).', tip: 'Dấu trang lưu địa chỉ web để mở lại; lịch sử là các trang từng truy cập. URL là địa chỉ tài nguyên trên web.' },
+    { heading: 'Thiết bị và kết nối', body: 'Thiết bị nhập: bàn phím, chuột, micro, máy quét. Thiết bị xuất: màn hình, loa, máy in, máy chiếu. Webcam thu hình; màn hình cảm ứng vừa nhập vừa xuất.', tip: 'Nhận diện USB, HDMI, Ethernet, Wi-Fi, Bluetooth theo chức năng; HDMI truyền hình và tiếng, Ethernet dùng kết nối mạng có dây.' },
+    { heading: 'Phần cứng, bộ nhớ và lưu trữ', body: 'CPU xử lý; RAM giữ dữ liệu tạm thời khi máy hoạt động; SSD/HDD lưu dữ liệu lâu dài. 1 GB thường được quy đổi thành 1024 MB trong bài toán Tin học cơ bản.', tip: 'Tệp phải được lưu (Save) vào bộ nhớ bền vững; RAM không thay thế ổ lưu trữ.' },
+    { heading: 'Phần mềm và hệ điều hành', body: 'Phần mềm hệ thống gồm hệ điều hành; phần mềm ứng dụng đáp ứng công việc cụ thể. Phân biệt phần mềm mã nguồn mở và phần mềm độc quyền; chỉ cài từ nguồn đáng tin cậy.', tip: 'Windows/macOS thường ở máy tính; Android/iOS thường ở điện thoại, máy tính bảng.' },
+    { heading: 'Mạng cơ bản và xử lý lỗi', body: 'LAN là mạng cục bộ; Internet kết nối nhiều mạng. Router định tuyến giữa các mạng; switch kết nối thiết bị trong LAN; modem kết nối đường truyền nhà mạng.', tip: 'Biểu tượng Wi-Fi không đảm bảo Internet hoạt động. Khi lỗi: kiểm tra kết nối, thử trang khác, kiểm tra router và hỏi người hỗ trợ.' },
+  ] },
+  { title: 'Quản lí thông tin', en: 'Information Management', sections: [
+    { heading: 'Tìm kiếm hiệu quả', body: 'Xác định điều muốn biết, chọn từ khóa cụ thể. Khi kết quả quá rộng, bổ sung tên địa danh, thời gian hoặc đặc trưng; kiểm tra tiêu đề, nguồn và độ liên quan.', tip: 'Không phải kết quả xuất hiện đầu tiên luôn đúng. Đối chiếu nguồn uy tín và ngày công bố.' },
+    { heading: 'Tìm trong trang và tài liệu', body: 'Ctrl+F hỗ trợ tìm từ trong trang web hoặc tài liệu đang mở; mục lục và thanh điều hướng giúp tìm phần cần đọc.', tip: 'Phân biệt tìm trên Internet với tìm trong trang hiện tại.' },
+    { heading: 'Ghi nguồn và bản quyền', body: 'Ghi tác giả, tên bài, địa chỉ nguồn và ngày truy cập khi cần; không coi mọi hình ảnh trên mạng là được dùng tự do.', tip: 'Public domain có thể có điều kiện pháp lý tùy nơi; Creative Commons có loại yêu cầu ghi công, cấm thương mại hoặc cấm sửa đổi. Đọc đúng giấy phép trước khi sử dụng.' },
+  ] },
+  { title: 'Công dân số', en: 'Digital Citizenship', sections: [
+    { heading: 'Danh tính và dữ liệu cá nhân', body: 'Thông tin nhận dạng như họ tên đầy đủ, số điện thoại, địa chỉ, tài khoản trường cần được bảo vệ. Chọn quyền riêng tư phù hợp cho hồ sơ và bài đăng.', tip: 'Không công khai mật khẩu, mã xác thực, lịch học cá nhân hoặc dữ liệu bạn bè khi chưa được phép.' },
+    { heading: 'Dấu chân số và danh tiếng', body: 'Bài viết, bình luận và hình ảnh có thể bị chụp lại kể cả đã xóa. Tôn trọng bản quyền, người khác và quy tắc cộng đồng.', tip: 'Trước khi đăng: kiểm tra tính đúng, mức riêng tư, và hậu quả lâu dài.' },
+    { heading: 'Đối phó nội dung tiêu cực', body: 'Không lan truyền tin chưa kiểm chứng; tránh đáp trả gây hấn. Lưu bằng chứng khi bị bắt nạt, chặn/báo cáo và trao đổi với người lớn đáng tin cậy.', tip: 'Ẩn danh không đồng nghĩa không có trách nhiệm; bảo vệ danh tính nhưng vẫn phải ứng xử đúng pháp luật.' },
+  ] },
+  { title: 'Truyền thông', en: 'Communication', sections: [
+    { heading: 'Chọn kênh giao tiếp', body: 'Email phù hợp thông tin trang trọng, có thể đính kèm tệp. Tin nhắn cho trao đổi nhanh; họp trực tuyến cho trao đổi trực tiếp; diễn đàn cho thảo luận theo chủ đề.', tip: 'Chọn kênh theo người nhận, tính khẩn cấp, độ riêng tư và yêu cầu lưu lại nội dung.' },
+    { heading: 'Email cơ bản', body: 'To là người nhận chính; Cc để gửi bản sao hiển thị; Bcc ẩn danh sách người nhận bản sao. Reply trả lời người gửi, Reply all trả lời mọi người trong luồng, Forward chuyển tiếp.', tip: 'Kiểm tra đúng người nhận, chủ đề, lời chào, tệp đính kèm và nội dung trước khi gửi.' },
+    { heading: 'Diễn đạt có trách nhiệm', body: 'Dùng lời lịch sự, rõ ràng, không viết toàn chữ in hoa để quát nạt. Tôn trọng quy định của nền tảng; dùng từ ngữ bao hàm, không xúc phạm.', tip: 'Không đăng thông tin cá nhân của người khác vào nhóm công khai.' },
+  ] },
+  { title: 'An toàn và bảo mật', en: 'Safety and Security', sections: [
+    { heading: 'Nhận biết nguy cơ', body: 'Lừa đảo trực tuyến thường thúc giục bấm link, cung cấp OTP hoặc mật khẩu; mã độc có thể ẩn trong tệp đính kèm hay phần mềm không rõ nguồn.', tip: 'Kiểm tra người gửi, địa chỉ website, đường dẫn; không tải hoặc mở tệp đáng ngờ.' },
+    { heading: 'Bảo vệ tài khoản và thiết bị', body: 'Mật khẩu đủ dài, khó đoán và riêng cho từng dịch vụ. Bật xác thực nhiều yếu tố khi có; khóa màn hình khi rời máy; cập nhật phần mềm.', tip: 'Không đưa mật khẩu cho bạn; đổi mật khẩu khi nghi lộ; dùng tính năng khôi phục chính thức.' },
+    { heading: 'Quyền riêng tư khi duyệt web', body: 'Cookie và lịch sử có thể ghi nhận hoạt động. Chế độ riêng tư chủ yếu hạn chế lưu lịch sử trên thiết bị, không làm người dùng vô hình với mạng và website.', tip: 'Cân nhắc khi lưu mật khẩu trên máy dùng chung; đăng xuất tài khoản và xóa dữ liệu phiên khi cần.' },
+    { heading: 'Sức khỏe số', body: 'Ngồi đúng tư thế, nghỉ mắt và vận động sau thời gian dùng màn hình; nhận biết căng thẳng, mất ngủ và tác động của mạng xã hội.', tip: 'Báo người lớn khi bị quấy rối, lừa đảo hoặc nội dung làm em bất an.' },
+  ] },
+  { title: 'Sáng tạo nội dung', en: 'Content Creation', sections: [
+    { heading: 'Tài liệu và trình chiếu', body: 'Tạo tài liệu gồm tiêu đề, đoạn văn, hình ảnh; định dạng cơ bản: font, cỡ chữ, căn lề, danh sách. Slide cần nội dung ngắn gọn, dễ đọc và nhất quán.', tip: 'Phân biệt Save với Save As; chọn nơi lưu và tên tệp có ý nghĩa.' },
+    { heading: 'Ghi công và trích dẫn', body: 'Khi dùng nội dung của người khác, ghi rõ tác giả và nguồn; trích dẫn hỗ trợ kiểm chứng và tôn trọng công sức người tạo.', tip: 'Không chỉ dán địa chỉ web nếu giáo viên yêu cầu trích dẫn đầy đủ.' },
+    { heading: 'Quản lý tệp và sao lưu', body: 'Dùng thư mục phân loại; đặt tên tệp rõ ràng, tránh tên như new1-final-final. Sao lưu là tạo bản dự phòng ở nơi khác để phục hồi khi mất dữ liệu.', tip: 'Ví dụ: Tin6_CD1_BaoCao_2026.docx; sao lưu lên ổ ngoài hoặc dịch vụ có quyền truy cập phù hợp.' },
+    { heading: 'In ấn cơ bản', body: 'Portrait là dọc; Landscape là ngang; chọn trang in, số bản, kích thước giấy, in hai mặt, màu/đen trắng và xem trước khi in.', tip: 'Kiểm tra máy in đích và phạm vi trang để không lãng phí giấy.' },
+  ] },
+  { title: 'Cộng tác', en: 'Collaboration', sections: [
+    { heading: 'Hợp tác trong môi trường số', body: 'Cộng tác dùng công cụ số để nhiều người cùng hoàn thành công việc; có thể phân công, góp ý và theo dõi tiến độ trên tài liệu chung.', tip: 'Phân biệt quyền xem, bình luận và chỉnh sửa trước khi chia sẻ.' },
+    { heading: 'Đồng bộ và không đồng bộ', body: 'Họp video hoặc chat thời gian thực là đồng bộ; email, bình luận tài liệu, bảng công việc có thể là không đồng bộ.', tip: 'Chọn hình thức theo lịch nhóm và nhu cầu phản hồi ngay.' },
+    { heading: 'Nghi thức làm việc nhóm', body: 'Nêu ý kiến lịch sự, góp ý cụ thể, tôn trọng lượt phát biểu và nguồn đóng góp; không tự ý xóa nội dung của bạn.', tip: 'Nhận xét về sản phẩm, không công kích cá nhân; báo nhóm trước khi thay đổi lớn.' },
+    { heading: 'Phản hồi và quản lý phiên bản', body: 'Nhận xét, đề xuất sửa, theo dõi thay đổi và lịch sử phiên bản giúp nhóm kiểm tra đóng góp, khôi phục khi sửa nhầm.', tip: 'Khi có xung đột, trao đổi với nhóm thay vì ghi đè sản phẩm của người khác.' },
+  ] },
+];
+export default function Ic3Level1Theory(){
+ const [topic,setTopic]=useState(0);
+ const [expanded,setExpanded]=useState<number[]>([0]);
+ const current=lessons[topic];
+ return <section className="rounded-2xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 md:p-6 space-y-5" aria-label="Tóm tắt lý thuyết IC3 GS6 Level 1">
+  <div className="flex items-start gap-3"><div className="rounded-xl bg-blue-100 dark:bg-blue-950/40 text-blue-700 p-3"><BookOpen size={22}/></div><div><h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Ôn lý thuyết IC3 GS6 Level 1</h2><p className="text-sm text-slate-500 dark:text-slate-400 mt-1">7 chủ đề · Kiến thức cần đạt · Ví dụ và điểm dễ nhầm · Đọc trước khi làm Test</p></div></div>
+  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">{lessons.map((lesson,i)=><button type="button" key={i} onClick={()=>{setTopic(i);setExpanded([0]);}} className={'text-left rounded-xl border p-3 text-sm transition-colors '+(topic===i?'bg-blue-600 text-white border-blue-600':'bg-slate-50 dark:bg-slate-800 dark:border-slate-700 hover:border-blue-400')} aria-pressed={topic===i}><span className="block text-xs opacity-80">Chủ đề {i+1}</span><strong className="block mt-1 leading-snug">{lesson.title}</strong></button>)}</div>
+  <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 p-4"><p className="text-xs text-blue-700 dark:text-blue-300 font-bold">CẦN ĐẠT · CHỦ ĐỀ {topic+1}</p><h3 className="text-lg font-extrabold mt-1">{current.title}</h3><p className="text-sm text-slate-500 mt-1">{current.en} · {current.sections.length} nhóm kiến thức</p></div>
+  <div className="space-y-2">{current.sections.map((s,i)=><div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"><button type="button" onClick={()=>setExpanded(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i])} aria-expanded={expanded.includes(i)} className="w-full flex items-center gap-2 justify-between text-left px-4 py-3 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"><span className="flex items-center gap-2"><CheckCircle2 size={17} className="text-emerald-600 shrink-0"/>{s.heading}</span>{expanded.includes(i)?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</button>{expanded.includes(i)&&<div className="px-4 pb-4 space-y-3 text-sm leading-relaxed"><p className="text-slate-700 dark:text-slate-200">{s.body}</p><div className="bg-amber-50 dark:bg-amber-950/20 border-l-4 border-amber-400 rounded-r-lg px-3 py-2"><strong className="text-amber-800 dark:text-amber-300">Cần nhớ: </strong>{s.tip}</div></div>}</div>)}</div>
+  <p className="text-xs text-slate-500 dark:text-slate-400">Tài liệu ôn tập do nhà trường diễn giải từ mục tiêu kỹ năng công khai, không phải đề thi chính thức hay bản sao sách IIG. Tham khảo: <a className="text-blue-600 hover:underline" href="https://certiport.ccilearning.com/wp-content/uploads/2022/10/IC3_GS6_All_Levels_Exam_Domains.pdf" target="_blank" rel="noopener noreferrer">Certiport – GS6 Exam Domains</a> · <a className="text-blue-600 hover:underline" href="https://iigvietnam.edu.vn/vi/bai-thi/bai-thi-ic3" target="_blank" rel="noopener noreferrer">IIG Việt Nam</a>.</p>
+ </section>;
+}

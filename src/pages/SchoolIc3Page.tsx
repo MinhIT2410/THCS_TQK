@@ -5,6 +5,7 @@ import { ArrowLeft, BookOpen, CheckCircle2, ChevronLeft, ChevronRight, LockKeyho
 import { ROUTES } from '../config/routes';
 import { useAuth } from '../features/auth/AuthContext';
 import { supabase } from '../services/supabaseClient';
+import Ic3Level1Theory from '../components/ic3/Ic3Level1Theory';
 
 type Mode = 'learn' | 'exam';
 type Question = { id: string; prompt: string; choices: string[] };
@@ -14,6 +15,7 @@ const gradeLevels = [{ value:'6', name:'Khối 6 – Level 1' }, {value:'7',name
 export default function SchoolIc3Page() {
   const { isAuthenticated } = useAuth();
   const [grade,setGrade] = useState('6');
+  const [showTheory,setShowTheory]=useState(false);
   const [sets,setSets] = useState<{id:string; title:string; question_count:number}[]>([]);
   const [setId,setSetId] = useState('');
   const [mode,setMode] = useState<Mode>('learn');
@@ -66,6 +68,7 @@ export default function SchoolIc3Page() {
     <div className="bg-gradient-to-r from-blue-950 to-indigo-800 text-white px-5 py-7"><div className="max-w-6xl mx-auto"><h1 className="text-2xl font-extrabold">Luyện tập IC3 tại trường</h1><p className="text-sm text-indigo-100 mt-1">Học kiến thức – giải thích ngay – kiểm tra và lưu điểm</p></div></div>
     <div className="max-w-6xl mx-auto px-4 pt-6 space-y-4">
       <Link to={ROUTES.INTERNATIONAL_IT} className="inline-flex gap-2 items-center text-blue-700 dark:text-blue-300 text-sm"><ArrowLeft size={16}/>Trở lại Học Tin học quốc tế</Link>
+      {!attemptId && <div className="space-y-3"><button type="button" aria-expanded={showTheory} onClick={()=>setShowTheory(v=>!v)} className="w-full flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50 dark:bg-slate-900 dark:border-slate-700 px-5 py-4 text-left"><span><strong className="text-blue-800 dark:text-blue-300">📘 Ôn lý thuyết IC3 GS6 Level 1</strong><span className="block text-sm text-slate-600 dark:text-slate-400 mt-1">7 chủ đề · Kiến thức cần đạt · Ví dụ và điểm dễ nhầm</span></span><span className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">{showTheory?'Thu gọn':'Xem lý thuyết'}</span></button>{showTheory&&<Ic3Level1Theory/>}</div>}
       {!attemptId ? <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border dark:border-slate-800 space-y-4">
         <h2 className="font-bold text-xl">Chọn bài luyện tập tại trường</h2>
         <div className="grid md:grid-cols-2 gap-4"><label className="text-sm font-semibold">Chọn khối<select className="block w-full mt-2 border rounded-lg p-3 bg-white text-slate-900" value={grade} onChange={e=>setGrade(e.target.value)}>{gradeLevels.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label>
