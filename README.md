@@ -1,31 +1,30 @@
-# PATCH: 2 thẻ Ôn tập Tin học quốc tế
+# Patch 099 – Quản lý ngân hàng câu hỏi IC3
 
-## Kết quả
-- `/mo-rong/tin-hoc-quoc-te`: trang chọn hai thẻ lớn theo phong cách tác vụ nhanh của mục Thi đua.
-- Thẻ **Ôn tập tại trường** mở `/mo-rong/tin-hoc-quoc-te/luyen-tap` (route và SchoolIc3Page đang có).
-- Thẻ **Bài test trên IC3 Review** mở `/mo-rong/tin-hoc-quoc-te/ic3-review`.
-- Giao diện cũ chọn khối/chọn bài IIG được chuyển nguyên chức năng sang `Ic3ReviewPage.tsx`, không thay đổi RPC, mã IC3, log hay nhập điểm.
-- Trên trang IIG đã bỏ ô dẫn ngược sang ôn tập tại trường, vì giờ có trang hai thẻ riêng.
+## Cấu trúc
+Quản trị → Mở rộng → Quản lý Tin học quốc tế:
+- Ngân hàng câu hỏi IC3 nằm ở đầu trang, có sẵn **7 chủ đề x 3 khối** (21 chủ đề).
+- Admin chọn khối / chủ đề → thêm Test → thêm hoặc sửa câu hỏi trực tiếp.
+- Nút **Tải Excel mẫu** tạo `MAU_NHAP_CAU_HOI_IC3.xlsx` gồm cột cố định: STT, Câu hỏi, A, B, C, D, Đáp án đúng, Giải thích, Mẹo ghi nhớ. Sheet phải tên `CAU_HOI`.
+- Chọn file Excel, dữ liệu được kiểm tra trước khi nhấn Nhập. Trùng STT bị từ chối để tránh ghi đè.
+- Test mới mặc định **bản nháp**. Chỉ xuất bản khi đã có ít nhất một câu hỏi.
+- Quản lý mã mở bài IIG được giữ nguyên trong mục có thể bung/thu gọn bên dưới.
 
-## File thay đổi (chỉ 4 file)
-- `src/pages/InternationalITPage.tsx`: **thay nội dung** bằng trang chọn 2 thẻ.
-- `src/pages/Ic3ReviewPage.tsx`: **file mới**, chứa chức năng IIG cũ.
-- `src/config/routes.ts`: thêm `ROUTES.IC3_REVIEW`.
-- `src/App.tsx`: đăng ký route mới và lazy import trang IIG.
+## File thay đổi
+- `src/components/admin/Ic3QuestionBank.tsx` (mới)
+- `src/pages/admin/AdminIc3Page.tsx` (thay bản đang dùng; giữ phần quản lý mã IIG)
+- `supabase/migrations/099_ic3_school_bank_admin.sql` (mới)
 
-## Cài đặt
-1. Yêu cầu source của bạn đã có bản `098_ic3_school_quiz` cùng trang `SchoolIc3Page.tsx` và bản IC3 IIG/ghi log đang hoạt động.
-2. Giải nén ZIP tại thư mục project, copy đúng 4 file giữ cấu trúc `src/...` và ghi đè file cũ.
-3. Dùng GitHub Desktop kiểm tra DIFF, chỉ commit các file trên; không ghi đè các bản hotfix khác.
-4. Chạy build/test của dự án trước khi push nếu môi trường đã cài dependency.
+## Triển khai
+1. **Yêu cầu:** đã triển khai SQL 098 và giao diện quản trị IC3 + mã IIG trước đó.
+2. Chạy **099** một lần trong Supabase SQL Editor.
+3. Copy 2 file `src` đúng đường dẫn của project.
+4. Kiểm tra GitHub Desktop diff (đặc biệt AdminIc3Page nếu có hotfix mới), commit/push.
+5. Vào quản trị IC3 → chọn khối/chủ đề → Tạo Test → nhập câu hỏi → Xuất bản.
 
-## Checklist kiểm thử
-- Menu Mở rộng -> Học Tin học quốc tế mở 2 thẻ.
-- Thẻ trường mở bài luyện tập như cũ.
-- Thẻ IIG mở trang chọn khối/bài, xem mã, sao chép mã, ghi log và gửi điểm.
-- Quay về trang hai thẻ; kiểm tra giao diện trên điện thoại và dark mode.
-- Không có SQL migration mới; không sửa Supabase hoặc quản trị.
-- Không xóa dữ liệu/tin tức, không thay đổi thi đua, GVCN, báo cáo.
-
-## Lưu ý
-Patch dựa trên file mới nhất có sẵn trong ZIP `TQK_PATCH_IC3_BO_KHUNG_LUYEN_TAP_098.zip`. Nếu bạn đã có hotfix riêng cho `InternationalITPage.tsx` hoặc `App.tsx` sau bản này, hãy đối chiếu và ghép thay đổi chứ không copy đè mù.
+## Lưu ý an toàn
+- Đáp án đúng chỉ được lấy từ RPC admin có kiểm tra quyền. Không cấp SELECT bảng câu hỏi cho học sinh.
+- Các câu hỏi của một Test đã có lượt làm **không nên sửa** vì sẽ làm sai lịch sử chấm điểm. SQL hiện chặn cả sửa/thêm/xóa câu khi Test đã có lượt làm. Hãy tạo Test mới để phát hành bản khác.
+- Import Excel hiện lưu từng dòng; nếu lỗi giữa chừng có thể đã nhập một phần. Khi đó tải lại danh sách, sửa Excel rồi tiếp tục.
+- Không tự tạo toàn bộ Test 1–N; chỉ 21 chủ đề định sẵn, admin chủ động thêm Test theo nhu cầu.
+- Không sửa SQL 095–098; không thay đổi thi đua, tin tức, báo cáo, mã IIG hoặc điểm cũ.
+- Chưa chạy build / test Supabase trực tiếp. Kiểm thử với tài khoản admin và học sinh trên môi trường thử nghiệm trước khi áp dụng rộng.
