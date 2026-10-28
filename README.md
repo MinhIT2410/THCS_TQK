@@ -1,30 +1,43 @@
-# Patch 099 – Quản lý ngân hàng câu hỏi IC3
+# PATCH: giao diện quản lý Test IC3 theo danh sách hiển thị sẵn
 
-## Cấu trúc
-Quản trị → Mở rộng → Quản lý Tin học quốc tế:
-- Ngân hàng câu hỏi IC3 nằm ở đầu trang, có sẵn **7 chủ đề x 3 khối** (21 chủ đề).
-- Admin chọn khối / chủ đề → thêm Test → thêm hoặc sửa câu hỏi trực tiếp.
-- Nút **Tải Excel mẫu** tạo `MAU_NHAP_CAU_HOI_IC3.xlsx` gồm cột cố định: STT, Câu hỏi, A, B, C, D, Đáp án đúng, Giải thích, Mẹo ghi nhớ. Sheet phải tên `CAU_HOI`.
-- Chọn file Excel, dữ liệu được kiểm tra trước khi nhấn Nhập. Trùng STT bị từ chối để tránh ghi đè.
-- Test mới mặc định **bản nháp**. Chỉ xuất bản khi đã có ít nhất một câu hỏi.
-- Quản lý mã mở bài IIG được giữ nguyên trong mục có thể bung/thu gọn bên dưới.
+## Mục tiêu
+- Phần quản lý Ngân hàng câu hỏi IC3 hiển thị **toàn bộ Test đã có** của chủ đề đang chọn.
+- Sau khi tạo Test mới, Test phải **xuất hiện ngay** trong danh sách để quản trị viên thấy và tiếp tục quản lý.
+- Giữ nguyên logic tạo Test, soạn câu hỏi, import Excel, xuất bản cho học sinh.
 
 ## File thay đổi
-- `src/components/admin/Ic3QuestionBank.tsx` (mới)
-- `src/pages/admin/AdminIc3Page.tsx` (thay bản đang dùng; giữ phần quản lý mã IIG)
-- `supabase/migrations/099_ic3_school_bank_admin.sql` (mới)
+- `src/components/admin/Ic3QuestionBank.tsx`
+- `README.md`
 
-## Triển khai
-1. **Yêu cầu:** đã triển khai SQL 098 và giao diện quản trị IC3 + mã IIG trước đó.
-2. Chạy **099** một lần trong Supabase SQL Editor.
-3. Copy 2 file `src` đúng đường dẫn của project.
-4. Kiểm tra GitHub Desktop diff (đặc biệt AdminIc3Page nếu có hotfix mới), commit/push.
-5. Vào quản trị IC3 → chọn khối/chủ đề → Tạo Test → nhập câu hỏi → Xuất bản.
+## Không thay đổi
+- Không có SQL migration mới.
+- Không sửa route quản trị.
+- Không đụng dữ liệu mã IIG, thi đua, báo cáo hay trang học sinh.
 
-## Lưu ý an toàn
-- Đáp án đúng chỉ được lấy từ RPC admin có kiểm tra quyền. Không cấp SELECT bảng câu hỏi cho học sinh.
-- Các câu hỏi của một Test đã có lượt làm **không nên sửa** vì sẽ làm sai lịch sử chấm điểm. SQL hiện chặn cả sửa/thêm/xóa câu khi Test đã có lượt làm. Hãy tạo Test mới để phát hành bản khác.
-- Import Excel hiện lưu từng dòng; nếu lỗi giữa chừng có thể đã nhập một phần. Khi đó tải lại danh sách, sửa Excel rồi tiếp tục.
-- Không tự tạo toàn bộ Test 1–N; chỉ 21 chủ đề định sẵn, admin chủ động thêm Test theo nhu cầu.
-- Không sửa SQL 095–098; không thay đổi thi đua, tin tức, báo cáo, mã IIG hoặc điểm cũ.
-- Chưa chạy build / test Supabase trực tiếp. Kiểm thử với tài khoản admin và học sinh trên môi trường thử nghiệm trước khi áp dụng rộng.
+## Giao diện mới
+1. Khối thẻ tóm tắt phía trên: khối đang quản lý, số Test của chủ đề, số Test đã xuất bản/nháp, tổng số câu hỏi.
+2. Khối chọn Khối / Chủ đề / Test đang mở quản lý.
+3. Khối tạo Test: tạo xong sẽ tự chọn Test đó.
+4. Khối **"Test hiện có của chủ đề"** hiển thị toàn bộ Test đã có dưới dạng card, mỗi card có:
+   - Tên Test
+   - Trạng thái: Đã xuất bản / Bản nháp
+   - Số câu hỏi
+   - Nút `Quản lý Test`
+   - Nếu đang chọn, có nút `Xuất bản` hoặc `Ẩn Test`
+5. Khối quản lý nội dung của Test đang chọn vẫn giữ: thêm câu, nhập Excel, sửa/xóa câu.
+
+## Cách cài
+1. Giải nén ZIP patch.
+2. Copy đúng file `src/components/admin/Ic3QuestionBank.tsx` vào project hiện tại.
+3. Mở GitHub Desktop kiểm tra DIFF; chỉ nên có thay đổi ở file trên (và README nếu bạn muốn giữ riêng).
+4. Build/test lại giao diện quản trị IC3.
+
+## Checklist kiểm thử
+- Chọn Khối 6 → Chủ đề 1: nhìn thấy các Test đã tạo.
+- Tạo Test mới: card mới xuất hiện ngay.
+- Bấm `Quản lý Test`: phần soạn câu hỏi mở đúng Test.
+- Xuất bản / Ẩn Test hoạt động bình thường.
+- Nhập Excel và thêm câu hỏi không bị ảnh hưởng.
+
+## Lưu ý
+Patch này được làm theo đúng yêu cầu "Test nào đã có hiện ra, tạo xong hiện ra để mình biết còn quản lý". Nếu bạn đã hotfix thêm `Ic3QuestionBank.tsx` sau bản 099, cần đối chiếu trước khi copy đè.
