@@ -317,8 +317,6 @@ export const movementService = {
       location: data.location?.trim() || null,
       status: data.status || 'sap_dien_ra',
       cover_image_url: data.cover_image_url?.trim() || null,
-      national_anthem_video_url: data.national_anthem_video_url?.trim() || null,
-      team_song_video_url: data.team_song_video_url?.trim() || null,
       summary_result: data.summary_result?.trim() || null,
       display_order: Number(data.display_order) >= 0 ? Number(data.display_order) : 0,
     };
@@ -352,8 +350,6 @@ export const movementService = {
     if (data.location !== undefined) payload.location = data.location?.trim() || null;
     if (data.status !== undefined) payload.status = data.status;
     if (data.cover_image_url !== undefined) payload.cover_image_url = data.cover_image_url?.trim() || null;
-    if (data.national_anthem_video_url !== undefined) payload.national_anthem_video_url = data.national_anthem_video_url?.trim() || null;
-    if (data.team_song_video_url !== undefined) payload.team_song_video_url = data.team_song_video_url?.trim() || null;
     if (data.summary_result !== undefined) payload.summary_result = data.summary_result?.trim() || null;
     if (data.display_order !== undefined) payload.display_order = Number(data.display_order) >= 0 ? Number(data.display_order) : 0;
 
