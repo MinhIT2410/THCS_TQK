@@ -32,6 +32,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { movementService } from '../../services/movementService';
+import MovementSubmissionSettings from '../../components/admin/MovementSubmissionSettings';
+import MovementSubmissionManager from '../../components/admin/MovementSubmissionManager';
+import { supabase } from '../../services/supabaseClient';
 import { storageService } from '../../services/storageService';
 import { generateSlug } from '../../utils/slug';
 import {
@@ -68,6 +71,8 @@ export default function AdminMovementsPage() {
 
   // Sub-management Modals
   const [activeEventsCampaign, setActiveEventsCampaign] = useState<MovementCampaign | null>(null);
+  const [configuredEvent, setConfiguredEvent] = useState<MovementEvent | null>(null);
+  const [activeSubmissionsCampaign, setActiveSubmissionsCampaign] = useState<MovementCampaign | null>(null);
   const [activeEvidenceCampaign, setActiveEvidenceCampaign] = useState<MovementCampaign | null>(null);
 
   // Archive & Permanent Delete Confirm Modals
@@ -462,7 +467,7 @@ export default function AdminMovementsPage() {
       await movementService.addCampaignEvidence({
         campaign_id: activeEvidenceCampaign.id,
         title: evidenceFormData.title.trim(),
-        evidence_type: evidenceFormData.evidence_type,
+        evidence_type: 'image',
         url: evidenceFormData.url.trim(),
         notes: evidenceFormData.notes.trim() || null,
       });
@@ -674,10 +679,12 @@ export default function AdminMovementsPage() {
                           <span>{c.events?.length || 0} HĐ</span>
                         </button>
 
+                        <button onClick={() => setActiveSubmissionsCampaign(c)} className="px-2.5 py-1 rounded-full border border-purple-200 text-purple-700 bg-purple-50 text-[10px] font-bold" title="Xem bài nộp theo lớp">Bài nộp</button>
+
                         <button
                           onClick={() => setActiveEvidenceCampaign(c)}
                           className="px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-900/60 flex items-center gap-1 cursor-pointer transition-colors"
-                          title="Quản lý minh chứng"
+                          title="Quản lý album ảnh"
                         >
                           <FileCheck className="w-3.5 h-3.5" />
                           <span>{c.evidence?.length || 0} MC</span>
@@ -1220,7 +1227,8 @@ export default function AdminMovementsPage() {
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button
+                          <button type="button" className="rounded-lg border px-2 py-1 text-xs text-blue-700" onClick={()=>setConfiguredEvent(e)}>Cài nộp bài</button>
+                        <button
                             onClick={() => handleDeleteEvent(e.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                           >
@@ -1237,6 +1245,9 @@ export default function AdminMovementsPage() {
         )}
       </AnimatePresence>
 
+      {configuredEvent && <MovementSubmissionSettings event={configuredEvent} onClose={()=>setConfiguredEvent(null)} onSaved={loadCampaigns}/>}
+      {activeSubmissionsCampaign && <div className="fixed inset-0 z-50 bg-slate-900/50 p-4 flex items-center justify-center"><div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto p-6"><div className="flex justify-between items-center mb-4"><h2 className="font-bold text-lg">Bài nộp – {activeSubmissionsCampaign.title}</h2><button onClick={()=>setActiveSubmissionsCampaign(null)}>Đóng ✕</button></div><MovementSubmissionManager campaignId={activeSubmissionsCampaign.id}/></div></div>}
+
       {/* Evidence Manager Modal */}
       <AnimatePresence>
         {activeEvidenceCampaign && (
@@ -1250,7 +1261,7 @@ export default function AdminMovementsPage() {
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <FileCheck className="w-5 h-5 text-emerald-600" />
-                  Quản lý Minh chứng - {activeEvidenceCampaign.title}
+                  Quản lý Album ảnh - {activeEvidenceCampaign.title}
                 </h3>
                 <button onClick={() => setActiveEvidenceCampaign(null)} className="p-1 text-slate-400">
                   <X className="w-5 h-5" />
@@ -1260,12 +1271,12 @@ export default function AdminMovementsPage() {
               <div className="p-6 space-y-6 overflow-y-auto flex-1">
                 {/* Form add evidence */}
                 <form onSubmit={handleAddEvidence} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="font-bold text-xs text-emerald-700 dark:text-emerald-400 uppercase">Thêm minh chứng phong trào</div>
+                  <div className="font-bold text-xs text-emerald-700 dark:text-emerald-400 uppercase">Thêm ảnh vào album phong trào</div>
 
                   <input
                     type="text"
                     required
-                    placeholder="Tên minh chứng (Ví dụ: Quyết định thành lập BTC, Ảnh trao thưởng...)"
+                    placeholder="Chú thích ảnh (Ví dụ: Hoạt động tri ân 20/11)"
                     value={evidenceFormData.title}
                     onChange={(e) => setEvidenceFormData(prev => ({ ...prev, title: e.target.value }))}
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
@@ -1277,14 +1288,12 @@ export default function AdminMovementsPage() {
                       onChange={(e) => setEvidenceFormData(prev => ({ ...prev, evidence_type: e.target.value as EvidenceType }))}
                       className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                     >
-                      {Object.entries(EVIDENCE_TYPE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
-                      ))}
+                      <option value="image">Hình ảnh</option>
                     </select>
 
                     <label className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-300 cursor-pointer flex items-center justify-center gap-1">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>{uploadingEvidenceFile ? 'Đang tải...' : 'Tải file minh chứng'}</span>
+                      <span>{uploadingEvidenceFile ? 'Đang tải...' : 'Tải ảnh'}</span>
                       <input type="file" onChange={handleEvidenceFileUpload} className="hidden" disabled={uploadingEvidenceFile} />
                     </label>
                   </div>
@@ -1292,7 +1301,7 @@ export default function AdminMovementsPage() {
                   <input
                     type="text"
                     required
-                    placeholder="URL liên kết minh chứng (https://...)"
+                    placeholder="URL ảnh đã tải lên"
                     value={evidenceFormData.url}
                     onChange={(e) => setEvidenceFormData(prev => ({ ...prev, url: e.target.value }))}
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"

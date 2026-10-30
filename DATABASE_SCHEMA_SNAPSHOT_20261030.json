@@ -1,0 +1,2232 @@
+{
+  "schema_query_1": [
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "assign_homeroom_teacher",
+      "details": {
+        "arguments": "p_class_id uuid, p_teacher_id uuid, p_academic_year_id uuid, p_start_date date, p_end_date date, p_notes text",
+        "return_type": "jsonb",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "check_movement_evidence_event_campaign",
+      "details": {
+        "arguments": "",
+        "return_type": "trigger",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "get_homeroom_competition_incident_people",
+      "details": {
+        "arguments": "p_incident_ids uuid[]",
+        "return_type": "TABLE(incident_id uuid, student_name text, student_code text, recorder_name text, approver_name text)",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "get_homeroom_competition_incidents",
+      "details": {
+        "arguments": "p_program_id uuid, p_limit integer, p_offset integer",
+        "return_type": "TABLE(id uuid, program_id uuid, rule_id uuid, student_id uuid, unit_id uuid, occurred_at timestamp with time zone, title text, description text, evidence_note text, status text, recorded_by uuid, approved_by uuid, approved_at timestamp with time zone, created_at timestamp with time zone, student_name text, unit_name text, rule_name text)",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "is_homeroom_teacher",
+      "details": {
+        "arguments": "p_user_id uuid, p_class_id uuid, p_academic_year_id uuid",
+        "return_type": "boolean",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "refresh_class_actual_enrollment",
+      "details": {
+        "arguments": "",
+        "return_type": "trigger",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "refresh_class_actual_enrollment_on_year_change",
+      "details": {
+        "arguments": "",
+        "return_type": "trigger",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "FUNCTION",
+      "schema_name": "public",
+      "object_name": "set_movement_campaign_user_audit",
+      "details": {
+        "arguments": "",
+        "return_type": "trigger",
+        "security_definer": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "album_images",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "album_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "image_url",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "caption",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "sort_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "created_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admin and editor can manage album images",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "is_admin_or_editor()",
+            "command": "ALL",
+            "with_check": "is_admin_or_editor()"
+          },
+          {
+            "name": "Public can read images from published albums",
+            "roles": [
+              "public"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM albums\n  WHERE ((albums.id = album_images.album_id) AND (albums.status = 'published'::text))))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "album_images_album_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "album_images_created_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "album_images_image_url_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM image_url)) > 0))"
+          },
+          {
+            "name": "album_images_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "albums",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "title",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "description",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "cover_image_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'published'::text",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "published_at",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "created_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "updated_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admin and editor can manage albums",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "is_admin_or_editor()",
+            "command": "ALL",
+            "with_check": "is_admin_or_editor()"
+          },
+          {
+            "name": "Public can read published albums",
+            "roles": [
+              "public"
+            ],
+            "using": "(status = 'published'::text)",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "albums_created_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "albums_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "albums_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])))"
+          },
+          {
+            "name": "albums_title_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))"
+          },
+          {
+            "name": "albums_updated_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "chi_doi_congress_submissions",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "campaign_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "class_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "teacher_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "meeting_date",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "location",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "total_members",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "attendees",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "chairperson",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "secretary",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "agenda",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "election_result",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "executive_committee",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "notes",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text[]",
+            "column": "image_urls",
+            "default": "'{}'::text[]",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'draft'::text",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "submitted_at",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "GVCN can insert own congress submission",
+            "roles": [
+              "authenticated"
+            ],
+            "using": null,
+            "command": "INSERT",
+            "with_check": "((teacher_id = auth.uid()) AND is_homeroom_teacher(auth.uid(), class_id))"
+          },
+          {
+            "name": "GVCN can read own congress submission",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "((teacher_id = auth.uid()) AND is_homeroom_teacher(auth.uid(), class_id))",
+            "command": "SELECT",
+            "with_check": null
+          },
+          {
+            "name": "GVCN can update own congress submission",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "((teacher_id = auth.uid()) AND is_homeroom_teacher(auth.uid(), class_id))",
+            "command": "UPDATE",
+            "with_check": "((teacher_id = auth.uid()) AND is_homeroom_teacher(auth.uid(), class_id))"
+          },
+          {
+            "name": "Managers can read congress submissions",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'VICE_PRINCIPAL'::text, 'CONTENT_EDITOR'::text])",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "chi_doi_congress_max_3_images",
+            "type": "c",
+            "definition": "CHECK ((cardinality(image_urls) <= 3))"
+          },
+          {
+            "name": "chi_doi_congress_one_per_class_campaign",
+            "type": "u",
+            "definition": "UNIQUE (campaign_id, class_id)"
+          },
+          {
+            "name": "chi_doi_congress_submissions_attendees_check",
+            "type": "c",
+            "definition": "CHECK (((attendees IS NULL) OR (attendees >= 0)))"
+          },
+          {
+            "name": "chi_doi_congress_submissions_campaign_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (campaign_id) REFERENCES movement_campaigns(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "chi_doi_congress_submissions_class_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "chi_doi_congress_submissions_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "chi_doi_congress_submissions_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text])))"
+          },
+          {
+            "name": "chi_doi_congress_submissions_teacher_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (teacher_id) REFERENCES profiles(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "chi_doi_congress_submissions_total_members_check",
+            "type": "c",
+            "definition": "CHECK (((total_members IS NULL) OR (total_members >= 0)))"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "classes",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "name",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "integer",
+            "column": "grade_level",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "code",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "grade_level_id",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "academic_year_id",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "expected_capacity",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "primary_classroom_id",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "boolean",
+            "column": "is_active",
+            "default": "true",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "notes",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "actual_enrollment",
+            "default": "0",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admins and principals can manage classes",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])",
+            "command": "ALL",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])"
+          },
+          {
+            "name": "All authenticated users can read classes",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "true",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "classes_academic_year_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (academic_year_id) REFERENCES academic_years(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "classes_grade_level_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (grade_level_id) REFERENCES grade_levels(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "classes_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "classes_primary_classroom_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (primary_classroom_id) REFERENCES classrooms(id) ON DELETE SET NULL"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "classrooms",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "code",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "name",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "room_type",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "building",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "floor",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "capacity",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'ACTIVE'::text",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "equipment",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "notes",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "boolean",
+            "column": "is_active",
+            "default": "true",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admins and principals can manage classrooms",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])",
+            "command": "ALL",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])"
+          },
+          {
+            "name": "All authenticated users can read classrooms",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "true",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "classrooms_code_key",
+            "type": "u",
+            "definition": "UNIQUE (code)"
+          },
+          {
+            "name": "classrooms_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "classrooms_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'LOCKED'::text, 'MAINTENANCE'::text, 'INACTIVE'::text])))"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "competition_incident_evidence",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "incident_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "evidence_type",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "file_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "external_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "caption",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "display_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "uploaded_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "competition_evidence_public_good_deeds_select",
+            "roles": [
+              "anon"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM (competition_incidents ci\n     JOIN competition_rules r ON ((r.id = ci.rule_id)))\n  WHERE ((ci.id = competition_incident_evidence.incident_id) AND (ci.status = 'APPROVED'::text) AND (r.category = 'GOOD_DEED'::text))))",
+            "command": "SELECT",
+            "with_check": null
+          },
+          {
+            "name": "competition_incident_evidence_insert",
+            "roles": [
+              "authenticated"
+            ],
+            "using": null,
+            "command": "INSERT",
+            "with_check": "((EXISTS ( SELECT 1\n   FROM competition_incidents ci\n  WHERE ((ci.id = competition_incident_evidence.incident_id) AND (ci.recorded_by = auth.uid())))) OR has_competition_permission(auth.uid(), 'COMPETITION_APPROVE'::text) OR has_competition_permission(auth.uid(), 'COMPETITION_MANAGE'::text))"
+          },
+          {
+            "name": "competition_incident_evidence_select",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "((EXISTS ( SELECT 1\n   FROM (competition_incidents ci\n     JOIN competition_rules r ON ((r.id = ci.rule_id)))\n  WHERE ((ci.id = competition_incident_evidence.incident_id) AND (ci.status = 'APPROVED'::text) AND (r.category = 'GOOD_DEED'::text)))) OR can_view_competition_incident(auth.uid(), incident_id))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "competition_incident_evidence_incident_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (incident_id) REFERENCES competition_incidents(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "competition_incident_evidence_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "competition_incident_evidence_type_check",
+            "type": "c",
+            "definition": "CHECK ((evidence_type = ANY (ARRAY['IMAGE'::text, 'INTERNAL_LINK'::text, 'EXTERNAL_LINK'::text])))"
+          },
+          {
+            "name": "competition_incident_evidence_uploaded_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (uploaded_by) REFERENCES profiles(id) ON DELETE SET NULL"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "movement_campaigns",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "title",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "slug",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "summary",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "content",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "cover_image_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "campaign_type",
+            "default": "'theo_dot'::text",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "start_date",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "end_date",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'draft'::text",
+            "nullable": false
+          },
+          {
+            "type": "boolean",
+            "column": "is_featured",
+            "default": "false",
+            "nullable": false
+          },
+          {
+            "type": "boolean",
+            "column": "is_published",
+            "default": "false",
+            "nullable": false
+          },
+          {
+            "type": "integer",
+            "column": "display_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "academic_year",
+            "default": "'2025-2026'::text",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "created_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "updated_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "national_anthem_video_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "team_song_video_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "ceremony_salute_command",
+            "default": "'Chào cờ, chào!'::text",
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "ceremony_readiness_motto",
+            "default": "'Vì Tổ quốc xã hội chủ nghĩa, vì lý tưởng của Bác Hồ vĩ đại. Sẵn sàng!'::text",
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "ceremony_salute_audio_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "ceremony_readiness_audio_url",
+            "default": null,
+            "nullable": true
+          }
+        ],
+        "policies": [
+          {
+            "name": "CMS managers can insert movement campaigns",
+            "roles": [
+              "authenticated"
+            ],
+            "using": null,
+            "command": "INSERT",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])"
+          },
+          {
+            "name": "CMS managers can update movement campaigns",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])",
+            "command": "UPDATE",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])"
+          },
+          {
+            "name": "Only super admin can delete movement campaigns",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text])",
+            "command": "DELETE",
+            "with_check": null
+          },
+          {
+            "name": "Public can read published movement campaigns",
+            "roles": [
+              "public"
+            ],
+            "using": "(((is_published = true) AND (status <> 'draft'::text)) OR ((auth.uid() IS NOT NULL) AND has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "movement_campaigns_academic_year_check",
+            "type": "c",
+            "definition": "CHECK ((academic_year ~ '^\\d{4}-\\d{4}$'::text))"
+          },
+          {
+            "name": "movement_campaigns_created_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "movement_campaigns_dates_check",
+            "type": "c",
+            "definition": "CHECK (((end_date IS NULL) OR (start_date IS NULL) OR (end_date >= start_date)))"
+          },
+          {
+            "name": "movement_campaigns_display_order_check",
+            "type": "c",
+            "definition": "CHECK ((display_order >= 0))"
+          },
+          {
+            "name": "movement_campaigns_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "movement_campaigns_slug_key",
+            "type": "u",
+            "definition": "UNIQUE (slug)"
+          },
+          {
+            "name": "movement_campaigns_slug_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM slug)) > 0))"
+          },
+          {
+            "name": "movement_campaigns_slug_regex_check",
+            "type": "c",
+            "definition": "CHECK ((slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'::text))"
+          },
+          {
+            "name": "movement_campaigns_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'sap_dien_ra'::text, 'dang_dien_ra'::text, 'da_ket_thuc'::text, 'archived'::text])))"
+          },
+          {
+            "name": "movement_campaigns_summary_length_check",
+            "type": "c",
+            "definition": "CHECK (((summary IS NULL) OR (length(summary) <= 500)))"
+          },
+          {
+            "name": "movement_campaigns_title_length_check",
+            "type": "c",
+            "definition": "CHECK ((length(title) <= 200))"
+          },
+          {
+            "name": "movement_campaigns_title_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))"
+          },
+          {
+            "name": "movement_campaigns_type_check",
+            "type": "c",
+            "definition": "CHECK ((campaign_type = ANY (ARRAY['thuong_xuyen'::text, 'theo_dot'::text, 'cuoc_thi'::text, 'cao_diem'::text, 'ke_hoach_thang'::text])))"
+          },
+          {
+            "name": "movement_campaigns_updated_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "movement_events",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "campaign_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "title",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "description",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "event_date",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "location",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'sap_dien_ra'::text",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "cover_image_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "summary_result",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "display_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "CMS managers can manage movement events",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])",
+            "command": "ALL",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])"
+          },
+          {
+            "name": "Public can read events of published movement campaigns",
+            "roles": [
+              "public"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM movement_campaigns\n  WHERE ((movement_campaigns.id = movement_events.campaign_id) AND (((movement_campaigns.is_published = true) AND (movement_campaigns.status <> 'draft'::text)) OR ((auth.uid() IS NOT NULL) AND has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text]))))))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "movement_events_campaign_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (campaign_id) REFERENCES movement_campaigns(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "movement_events_display_order_check",
+            "type": "c",
+            "definition": "CHECK ((display_order >= 0))"
+          },
+          {
+            "name": "movement_events_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "movement_events_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['sap_dien_ra'::text, 'dang_dien_ra'::text, 'da_hoan_thanh'::text, 'huy'::text])))"
+          },
+          {
+            "name": "movement_events_title_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "movement_evidence",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "campaign_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "event_id",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "title",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "evidence_type",
+            "default": "'image'::text",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "url",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "notes",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "display_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "CMS managers can manage movement evidence",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])",
+            "command": "ALL",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text])"
+          },
+          {
+            "name": "Public can read evidence of published movement campaigns",
+            "roles": [
+              "public"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM movement_campaigns\n  WHERE ((movement_campaigns.id = movement_evidence.campaign_id) AND (((movement_campaigns.is_published = true) AND (movement_campaigns.status <> 'draft'::text)) OR ((auth.uid() IS NOT NULL) AND has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'CONTENT_EDITOR'::text]))))))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "movement_evidence_campaign_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (campaign_id) REFERENCES movement_campaigns(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "movement_evidence_display_order_check",
+            "type": "c",
+            "definition": "CHECK ((display_order >= 0))"
+          },
+          {
+            "name": "movement_evidence_event_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (event_id) REFERENCES movement_events(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "movement_evidence_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "movement_evidence_title_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))"
+          },
+          {
+            "name": "movement_evidence_type_check",
+            "type": "c",
+            "definition": "CHECK ((evidence_type = ANY (ARRAY['image'::text, 'news_link'::text, 'document_link'::text, 'album_link'::text, 'other_link'::text])))"
+          },
+          {
+            "name": "movement_evidence_url_not_empty",
+            "type": "c",
+            "definition": "CHECK ((length(TRIM(BOTH FROM url)) > 0))"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "public",
+      "object_name": "student_enrollments",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "student_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "class_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "academic_year_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admins and principals can manage student enrollments",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])",
+            "command": "ALL",
+            "with_check": "has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text])"
+          },
+          {
+            "name": "Select student enrollments based on roles and relations",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "(has_any_app_role(auth.uid(), ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'VICE_PRINCIPAL'::text, 'STAFF'::text]) OR (has_app_role(auth.uid(), 'TEACHER'::text) AND (is_homeroom_teacher(auth.uid(), class_id) OR is_subject_teacher(auth.uid(), class_id))) OR (student_id = auth.uid()) OR (student_id IN ( SELECT parent_student_relations.student_id\n   FROM parent_student_relations\n  WHERE (parent_student_relations.parent_id = auth.uid()))))",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "student_enrollments_academic_year_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (academic_year_id) REFERENCES academic_years(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "student_enrollments_class_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "student_enrollments_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "student_enrollments_student_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (student_id) REFERENCES profiles(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "student_enrollments_student_year_unique",
+            "type": "u",
+            "definition": "UNIQUE (student_id, academic_year_id)"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "school",
+      "object_name": "classes",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "school_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "academic_year_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "grade_level_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "character varying(20)",
+            "column": "code",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "character varying(50)",
+            "column": "name",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "smallint",
+            "column": "display_order",
+            "default": "1",
+            "nullable": false
+          },
+          {
+            "type": "smallint",
+            "column": "max_students",
+            "default": "45",
+            "nullable": false
+          },
+          {
+            "type": "boolean",
+            "column": "is_active",
+            "default": "true",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "app.utc_now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "app.utc_now()",
+            "nullable": false
+          }
+        ],
+        "policies": [],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "ck_classes_max_students",
+            "type": "c",
+            "definition": "CHECK (((max_students >= 1) AND (max_students <= 100)))"
+          },
+          {
+            "name": "fk_classes_academic_year",
+            "type": "f",
+            "definition": "FOREIGN KEY (academic_year_id) REFERENCES school.academic_years(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "fk_classes_grade_level",
+            "type": "f",
+            "definition": "FOREIGN KEY (grade_level_id) REFERENCES school.grade_levels(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "fk_classes_school",
+            "type": "f",
+            "definition": "FOREIGN KEY (school_id) REFERENCES school.schools(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "pk_classes",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "uq_classes_school_year_code",
+            "type": "u",
+            "definition": "UNIQUE (school_id, academic_year_id, code)"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "school",
+      "object_name": "gallery_albums",
+      "details": {
+        "columns": [
+          {
+            "type": "bigint",
+            "column": "id",
+            "default": "nextval('school.gallery_albums_id_seq'::regclass)",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "title",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "slug",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "description",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "text",
+            "column": "cover_image_url",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "integer",
+            "column": "sort_order",
+            "default": "0",
+            "nullable": false
+          },
+          {
+            "type": "boolean",
+            "column": "is_featured",
+            "default": "false",
+            "nullable": false
+          },
+          {
+            "type": "text",
+            "column": "status",
+            "default": "'DRAFT'::text",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "created_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "uuid",
+            "column": "updated_by",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "now()",
+            "nullable": false
+          }
+        ],
+        "policies": [
+          {
+            "name": "Admin users can delete albums",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true))))",
+            "command": "DELETE",
+            "with_check": null
+          },
+          {
+            "name": "Admin users can insert albums",
+            "roles": [
+              "authenticated"
+            ],
+            "using": null,
+            "command": "INSERT",
+            "with_check": "(EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true))))"
+          },
+          {
+            "name": "Admin users can update albums",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true))))",
+            "command": "UPDATE",
+            "with_check": "(EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true))))"
+          },
+          {
+            "name": "Admin users can view all albums",
+            "roles": [
+              "authenticated"
+            ],
+            "using": "(EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true))))",
+            "command": "SELECT",
+            "with_check": null
+          },
+          {
+            "name": "Anyone can view published albums",
+            "roles": [
+              "anon",
+              "authenticated"
+            ],
+            "using": "(status = 'PUBLISHED'::text)",
+            "command": "SELECT",
+            "with_check": null
+          }
+        ],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "gallery_albums_created_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          },
+          {
+            "name": "gallery_albums_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "gallery_albums_slug_key",
+            "type": "u",
+            "definition": "UNIQUE (slug)"
+          },
+          {
+            "name": "gallery_albums_status_check",
+            "type": "c",
+            "definition": "CHECK ((status = ANY (ARRAY['DRAFT'::text, 'PUBLISHED'::text, 'ARCHIVED'::text])))"
+          },
+          {
+            "name": "gallery_albums_updated_by_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+          }
+        ],
+        "rls_enabled": true
+      }
+    },
+    {
+      "object_type": "TABLE",
+      "schema_name": "school",
+      "object_name": "student_enrollments",
+      "details": {
+        "columns": [
+          {
+            "type": "uuid",
+            "column": "id",
+            "default": "gen_random_uuid()",
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "school_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "student_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "class_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "uuid",
+            "column": "academic_year_id",
+            "default": null,
+            "nullable": false
+          },
+          {
+            "type": "date",
+            "column": "enrollment_date",
+            "default": "CURRENT_DATE",
+            "nullable": false
+          },
+          {
+            "type": "date",
+            "column": "leave_date",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "smallint",
+            "column": "roll_number",
+            "default": null,
+            "nullable": true
+          },
+          {
+            "type": "character varying(20)",
+            "column": "status",
+            "default": "'ACTIVE'::character varying",
+            "nullable": false
+          },
+          {
+            "type": "boolean",
+            "column": "is_current",
+            "default": "true",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "created_at",
+            "default": "app.utc_now()",
+            "nullable": false
+          },
+          {
+            "type": "timestamp with time zone",
+            "column": "updated_at",
+            "default": "app.utc_now()",
+            "nullable": false
+          }
+        ],
+        "policies": [],
+        "rls_forced": false,
+        "constraints": [
+          {
+            "name": "ck_student_enrollments_dates",
+            "type": "c",
+            "definition": "CHECK (((leave_date IS NULL) OR (leave_date >= enrollment_date)))"
+          },
+          {
+            "name": "ck_student_enrollments_status",
+            "type": "c",
+            "definition": "CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'TRANSFERRED'::character varying, 'DROPPED'::character varying])::text[])))"
+          },
+          {
+            "name": "fk_student_enrollments_academic_year",
+            "type": "f",
+            "definition": "FOREIGN KEY (academic_year_id) REFERENCES school.academic_years(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "fk_student_enrollments_class",
+            "type": "f",
+            "definition": "FOREIGN KEY (class_id) REFERENCES school.classes(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "fk_student_enrollments_school",
+            "type": "f",
+            "definition": "FOREIGN KEY (school_id) REFERENCES school.schools(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "fk_student_enrollments_student",
+            "type": "f",
+            "definition": "FOREIGN KEY (student_id) REFERENCES school.students(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "student_enrollments_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "uq_student_enrollment",
+            "type": "u",
+            "definition": "UNIQUE (student_id, academic_year_id)"
+          }
+        ],
+        "rls_enabled": true
+      }
+    }
+  ],
+  "storage_query_2": [
+    {
+      "section": "STORAGE_BUCKET",
+      "object_group": "storage",
+      "object_name": "ic3-illustrations",
+      "details": {
+        "public": true,
+        "total_mb": 0.3,
+        "file_count": 34,
+        "file_size_limit": 153600,
+        "allowed_mime_types": [
+          "image/webp"
+        ]
+      }
+    },
+    {
+      "section": "STORAGE_BUCKET",
+      "object_group": "storage",
+      "object_name": "school-document",
+      "details": {
+        "public": true,
+        "total_mb": 1.2,
+        "file_count": 3,
+        "file_size_limit": 20971520,
+        "allowed_mime_types": [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-powerpoint",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        ]
+      }
+    },
+    {
+      "section": "STORAGE_BUCKET",
+      "object_group": "storage",
+      "object_name": "school-media",
+      "details": {
+        "public": true,
+        "total_mb": 640.8,
+        "file_count": 404,
+        "file_size_limit": 52428800,
+        "allowed_mime_types": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can delete school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-document'::text) AND is_admin_or_editor())",
+        "command": "DELETE",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can delete school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-media'::text) AND is_admin_or_editor())",
+        "command": "DELETE",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can update school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-document'::text) AND is_admin_or_editor())",
+        "command": "UPDATE",
+        "with_check": "((bucket_id = 'school-document'::text) AND is_admin_or_editor())"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can update school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-media'::text) AND is_admin_or_editor())",
+        "command": "UPDATE",
+        "with_check": "((bucket_id = 'school-media'::text) AND is_admin_or_editor())"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can upload school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-document'::text) AND is_admin_or_editor())"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin and editor can upload school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-media'::text) AND is_admin_or_editor())"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can delete school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-document'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))",
+        "command": "DELETE",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can delete school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-media'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))",
+        "command": "DELETE",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can update school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-document'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))",
+        "command": "UPDATE",
+        "with_check": "((bucket_id = 'school-document'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can update school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'school-media'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))",
+        "command": "UPDATE",
+        "with_check": "((bucket_id = 'school-media'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can upload school documents",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-document'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Admin users can upload school media",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-media'::text) AND (EXISTS ( SELECT 1\n   FROM (school.user_roles ur\n     JOIN school.roles r ON ((r.id = ur.role_id)))\n  WHERE ((ur.user_id = auth.uid()) AND (r.is_admin = true)))))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Anyone can view school documents",
+      "details": {
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "using": "(bucket_id = 'school-document'::text)",
+        "command": "SELECT",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Competition actors can upload incident evidence",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-media'::text) AND (name ~~ 'competition/incidents/%'::text) AND (has_competition_permission(auth.uid(), 'COMPETITION_RECORD'::text) OR (EXISTS ( SELECT 1\n   FROM (competition_actor_assignments ca\n     JOIN academic_years ay ON ((ay.id = ca.academic_year_id)))\n  WHERE ((ca.user_id = auth.uid()) AND (ca.is_active = true) AND (ay.is_current = true) AND (ca.start_date <= CURRENT_DATE) AND ((ca.end_date IS NULL) OR (ca.end_date >= CURRENT_DATE)) AND (((ca.assignment_type = 'SUPERVISOR'::text) AND (ca.can_record_incident = true)) OR (ca.assignment_type = 'RED_STAR'::text)))))))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "GVCN upload congress images",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'school-media'::text) AND ((storage.foldername(name))[1] = 'dai-hoi-chi-doi'::text) AND ((storage.foldername(name))[2] = (auth.uid())::text) AND is_homeroom_teacher(auth.uid()))"
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "Public can read school documents",
+      "details": {
+        "roles": [
+          "public"
+        ],
+        "using": "(bucket_id = 'school-document'::text)",
+        "command": "SELECT",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "ic3_illustrations_admin_delete",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": "((bucket_id = 'ic3-illustrations'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles r\n  WHERE ((r.user_id = ( SELECT auth.uid() AS uid)) AND (r.role_code = ANY (ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'VICE_PRINCIPAL'::text]))))))",
+        "command": "DELETE",
+        "with_check": null
+      }
+    },
+    {
+      "section": "STORAGE_POLICY",
+      "object_group": "storage",
+      "object_name": "ic3_illustrations_admin_insert",
+      "details": {
+        "roles": [
+          "authenticated"
+        ],
+        "using": null,
+        "command": "INSERT",
+        "with_check": "((bucket_id = 'ic3-illustrations'::text) AND (storage.extension(name) = 'webp'::text) AND (EXISTS ( SELECT 1\n   FROM user_roles r\n  WHERE ((r.user_id = ( SELECT auth.uid() AS uid)) AND (r.role_code = ANY (ARRAY['SUPER_ADMIN'::text, 'PRINCIPAL'::text, 'VICE_PRINCIPAL'::text]))))))"
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "album_images",
+      "details": {
+        "estimated_rows": 53
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "albums",
+      "details": {
+        "estimated_rows": -1
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "chi_doi_congress_submissions",
+      "details": {
+        "estimated_rows": -1
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "competition_incident_evidence",
+      "details": {
+        "estimated_rows": 201
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "movement_campaigns",
+      "details": {
+        "estimated_rows": -1
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "movement_events",
+      "details": {
+        "estimated_rows": -1
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "public",
+      "object_name": "movement_evidence",
+      "details": {
+        "estimated_rows": -1
+      }
+    },
+    {
+      "section": "TABLE_STATS",
+      "object_group": "school",
+      "object_name": "gallery_albums",
+      "details": {
+        "estimated_rows": -1
+      }
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import { movementService } from '../services/movementService';
+import MovementEventSubmission from '../components/activity/MovementEventSubmission';
 import ChiDoiCongressOnlineForm from '../components/activity/ChiDoiCongressOnlineForm';
 import {
   MovementCampaign,
@@ -324,6 +325,8 @@ export default function MovementDetailPage() {
                         <p>{evt.summary_result}</p>
                       </div>
                     )}
+                    {(evt as any).instructions && <p className="ml-8 text-sm text-blue-700 dark:text-blue-300"><b>Yêu cầu sản phẩm:</b> {(evt as any).instructions}</p>}
+                    <MovementEventSubmission campaignId={campaign.id} eventId={evt.id} academicYear={campaign.academic_year} enabled={(evt as any).submission_enabled} allowImages={(evt as any).allow_images} allowMp3={(evt as any).allow_mp3} allowVideoLink={(evt as any).allow_video_link} maxImages={(evt as any).max_images} deadline={(evt as any).submission_deadline}/>
                   </div>
                 </div>
               ))}
@@ -336,17 +339,17 @@ export default function MovementDetailPage() {
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <FileCheck className="w-5 h-5 text-emerald-600" />
-              Minh chứng phong trào ({campaign.evidence?.length || 0})
+              Album ảnh phong trào ({campaign.evidence?.filter(ev => ev.evidence_type === 'image').length || 0})
             </h2>
           </div>
 
-          {!campaign.evidence || campaign.evidence.length === 0 ? (
+          {!campaign.evidence || campaign.evidence.filter(ev => ev.evidence_type === 'image').length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400 italic">
               Chưa có tài liệu / hình ảnh minh chứng nào được đính kèm.
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {campaign.evidence.map((ev) => (
+              {campaign.evidence.filter(ev => ev.evidence_type === 'image').map((ev) => (
                 <a
                   key={ev.id}
                   href={ev.url}
